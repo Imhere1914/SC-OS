@@ -25,6 +25,7 @@ import { registerStrategy } from './routes/strategy'
 import { registerForms } from './routes/forms'
 import { registerAvailability } from './routes/availability'
 import { registerInvoices } from './routes/invoices'
+import { isEmailConfigured } from './stores/email-sender'
 
 const app = new Hono()
 
@@ -33,6 +34,15 @@ const BRANDS: Record<string, { id: string; name: string; shortName: string; acce
   hfm: { id: 'hfm', name: 'HFM Intelligence', shortName: 'HFM', accentColor: '#7c6f9b' },
   default: { id: 'default', name: 'AI OS', shortName: 'OS', accentColor: '#2f6df6' },
 }
+
+app.get('/api/email-status', (c) => {
+  const configured = isEmailConfigured()
+  return c.json({
+    configured,
+    from: process.env.CAMPAIGN_FROM_EMAIL?.trim() || null,
+    note: configured ? 'Resend is live' : 'Set RESEND_API_KEY and CAMPAIGN_FROM_EMAIL in .env to enable email sending',
+  })
+})
 
 app.get('/api/brand', (c) => {
   const id = (process.env.BRAND ?? 'default').toLowerCase()

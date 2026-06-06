@@ -8,12 +8,16 @@ import {
   Calendar01Icon,
   Chat01Icon,
   Copy01Icon,
+  FlowSquareIcon,
   ImageAdd01Icon,
   Layout01Icon,
   Mail01Icon,
+  Money01Icon,
   PlugSocketIcon,
   Share04Icon,
   StarIcon,
+  Target02Icon,
+  TaskEdit01Icon,
   UserCircleIcon,
   UserGroupIcon,
 } from '@hugeicons/core-free-icons'
@@ -28,11 +32,16 @@ const TILES = [
   { to: '/conversations', label: 'Conversations', icon: Chat01Icon,     desc: 'Unified inbox' },
   { to: '/contacts',      label: 'Contacts',      icon: UserGroupIcon,  desc: 'Your CRM' },
   { to: '/appointments',  label: 'Appointments',  icon: Calendar01Icon, desc: 'Bookings' },
+  { to: '/scheduling',    label: 'Scheduling',    icon: Calendar01Icon, desc: 'Availability & booking' },
+  { to: '/forms',         label: 'Forms',         icon: TaskEdit01Icon, desc: 'Lead capture' },
   { to: '/social',        label: 'Social',        icon: Share04Icon,    desc: 'Plan & publish' },
   { to: '/campaigns',     label: 'Campaigns',     icon: Mail01Icon,     desc: 'Email marketing' },
   { to: '/pages',         label: 'Pages',         icon: Layout01Icon,   desc: 'Landing pages' },
   { to: '/templates',     label: 'Templates',     icon: Copy01Icon,     desc: 'Reusable content' },
   { to: '/projects',      label: 'Projects',      icon: Briefcase01Icon,desc: 'Client work' },
+  { to: '/payments',      label: 'Payments',      icon: Money01Icon,    desc: 'Invoices & billing' },
+  { to: '/automations',   label: 'Automations',   icon: FlowSquareIcon, desc: 'Rules & workflows' },
+  { to: '/strategy',      label: 'Strategy',      icon: Target02Icon,   desc: 'OKRs & decisions' },
   { to: '/media',         label: 'Media Studio',  icon: ImageAdd01Icon, desc: 'Image & video gen' },
   { to: '/knowledge',     label: 'Knowledge Vault',icon: AiBrain01Icon, desc: 'Brand memory' },
   { to: '/avatars',       label: 'Avatars',       icon: UserCircleIcon, desc: 'Voice + chat identity' },
@@ -121,13 +130,15 @@ function Dashboard() {
 
         {/* ── Stats strip ──────────────────────────────────────── */}
         {stats && (
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
             <StatCard label="Pipeline" value={stats.pipeline.lead + stats.pipeline.contacted + stats.pipeline.qualified} sub="active leads" to="/contacts" />
             <StatCard label="Unread" value={stats.conversations.unread} sub="conversations" to="/conversations" />
             <StatCard label="This week" value={stats.appointments.thisWeek} sub="appointments" to="/appointments" />
             <StatCard label="Scheduled" value={stats.social.scheduled} sub="social posts" to="/social" />
-            <StatCard label="Campaigns sent" value={stats.campaigns.sent} sub={stats.campaigns.deliveryRate != null ? `${stats.campaigns.deliveryRate}% delivered` : 'no sends yet'} to="/campaigns" />
-            <StatCard label="Active projects" value={stats.projects.active} to="/projects" />
+            <StatCard label="Campaigns" value={stats.campaigns.sent} sub={stats.campaigns.deliveryRate != null ? `${stats.campaigns.deliveryRate}% delivered` : 'no sends yet'} to="/campaigns" />
+            <StatCard label="Projects" value={stats.projects.active} sub="active" to="/projects" />
+            <StatCard label="Revenue" value={`$${(stats.payments?.paid ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} sub={`$${(stats.payments?.outstanding ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} outstanding`} to="/payments" />
+            <StatCard label="Forms" value={stats.forms?.active ?? 0} sub={`${stats.forms?.total ?? 0} total`} to="/forms" />
           </div>
         )}
 

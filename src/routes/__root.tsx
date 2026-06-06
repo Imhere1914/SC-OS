@@ -187,6 +187,13 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 function RootLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+
+  // Public routes render without the app shell (no sidebar, no nav)
+  if (pathname.startsWith('/book')) {
+    return <Outlet />
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--theme-bg-grad)', backgroundAttachment: 'fixed' }}>
       {/* Desktop sidebar */}

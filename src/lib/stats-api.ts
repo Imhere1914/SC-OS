@@ -7,6 +7,8 @@ export type Stats = {
   campaigns: { sent: number; totalRecipients: number; totalSent: number; deliveryRate: number | null }
   social: { scheduled: number; published: number; publishedThisMonth: number }
   projects: { active: number }
+  forms?: { total: number; active: number }
+  payments?: { paid: number; outstanding: number; draft: number; total: number }
 }
 
 export async function fetchStats(brand?: string): Promise<Stats> {

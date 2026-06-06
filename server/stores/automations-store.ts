@@ -14,6 +14,7 @@ export type TriggerEvent =
   | 'new_conversation'
   | 'new_appointment'
   | 'campaign_sent'
+  | 'form_submitted'
 
 export const TRIGGER_EVENTS: TriggerEvent[] = [
   'new_contact',
@@ -21,6 +22,7 @@ export const TRIGGER_EVENTS: TriggerEvent[] = [
   'new_conversation',
   'new_appointment',
   'campaign_sent',
+  'form_submitted',
 ]
 
 export const TRIGGER_LABELS: Record<TriggerEvent, string> = {
@@ -29,6 +31,7 @@ export const TRIGGER_LABELS: Record<TriggerEvent, string> = {
   new_conversation: 'New conversation started',
   new_appointment: 'New appointment booked',
   campaign_sent: 'Campaign sent',
+  form_submitted: 'Form submitted',
 }
 
 export const TRIGGER_EMOJIS: Record<TriggerEvent, string> = {
@@ -37,6 +40,7 @@ export const TRIGGER_EMOJIS: Record<TriggerEvent, string> = {
   new_conversation: '💬',
   new_appointment: '📅',
   campaign_sent: '📤',
+  form_submitted: '📋',
 }
 
 // ─── Conditions ─────────────────────────────────────────────────────────────
