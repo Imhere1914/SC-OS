@@ -5,6 +5,7 @@ import { listAppointments } from '../stores/appointments-store'
 import { listPosts } from '../stores/social-store'
 import { listCampaigns } from '../stores/campaigns-store'
 import { listPages } from '../stores/pages-store'
+import { listNotifications } from '../stores/notifications-store'
 
 export interface Highlight {
   id: string
@@ -98,6 +99,17 @@ function buildHighlights(brand: string | null): Highlight[] {
       title: `Page live: ${pg.title}`,
       detail: `/${pg.slug}`,
       link: '/pages', at: pg.updated_at ?? null,
+    })
+  }
+
+  // Unread automation notifications
+  const notifs = listNotifications({ brand, unread_only: true })
+  for (const n of notifs.slice(0, 6)) {
+    out.push({
+      id: `notif-${n.id}`, kind: 'conversation', priority: 'attention', emoji: '⚡',
+      title: n.message,
+      detail: n.context_summary || 'Automation triggered',
+      link: '/automations', at: n.created_at,
     })
   }
 
