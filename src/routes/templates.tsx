@@ -1,6 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ComingSoon } from '@/components/coming-soon'
+import { TemplatesScreen } from '@/screens/templates/templates-screen'
 
-export const Route = createFileRoute('/templates')({
-  component: () => <ComingSoon title="utemplates" />,
-})
+export const Route = createFileRoute('/templates')({ component: TemplatesScreen })

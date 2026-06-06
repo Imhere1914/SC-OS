@@ -1,6 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ComingSoon } from '@/components/coming-soon'
+import { PagesScreen } from '@/screens/pages/pages-screen'
 
-export const Route = createFileRoute('/pages')({
-  component: () => <ComingSoon title="upages" />,
-})
+export const Route = createFileRoute('/pages')({ component: PagesScreen })
