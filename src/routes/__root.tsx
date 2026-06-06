@@ -9,6 +9,7 @@ import {
   DashboardSquare01Icon,
   Layout01Icon,
   ImageAdd01Icon,
+  AiBrain01Icon,
   Mail01Icon,
   Menu01Icon,
   PlugSocketIcon,
@@ -37,6 +38,7 @@ function navItems(brandId: string): { section: string; items: NavItem[] }[] {
         { to: '/', label: 'Dashboard', icon: DashboardSquare01Icon },
         { to: '/chat', label: 'Assistant', icon: Chat01Icon },
         { to: '/highlights', label: 'Highlights', icon: StarIcon },
+        { to: '/knowledge', label: 'Knowledge Vault', icon: AiBrain01Icon },
       ],
     },
     {

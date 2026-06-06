@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
+  AiBrain01Icon,
   AiMagicIcon,
   Briefcase01Icon,
   Calendar01Icon,
@@ -19,6 +20,7 @@ import {
 import { useBrand } from '@/contexts/BrandContext'
 import { fetchContacts } from '@/lib/contacts-api'
 import { fetchHighlights } from '@/lib/highlights-api'
+import { fetchStats } from '@/lib/stats-api'
 
 export const Route = createFileRoute('/')({ component: Dashboard })
 
@@ -31,19 +33,36 @@ const TILES = [
   { to: '/pages',         label: 'Pages',         icon: Layout01Icon,   desc: 'Landing pages' },
   { to: '/templates',     label: 'Templates',     icon: Copy01Icon,     desc: 'Reusable content' },
   { to: '/projects',      label: 'Projects',      icon: Briefcase01Icon,desc: 'Client work' },
-  { to: '/avatars',       label: 'Avatars',       icon: UserCircleIcon, desc: 'Voice + chat identity' },
   { to: '/media',         label: 'Media Studio',  icon: ImageAdd01Icon, desc: 'Image & video gen' },
+  { to: '/knowledge',     label: 'Knowledge Vault',icon: AiBrain01Icon, desc: 'Brand memory' },
+  { to: '/avatars',       label: 'Avatars',       icon: UserCircleIcon, desc: 'Voice + chat identity' },
   { to: '/plugins',       label: 'Plugins',       icon: PlugSocketIcon, desc: 'Integrations' },
   { to: '/highlights',    label: 'Highlights',    icon: StarIcon,       desc: 'What\'s going on' },
 ]
+
+function StatCard({ label, value, sub, to }: { label: string; value: string | number; sub?: string; to?: string }) {
+  const inner = (
+    <div
+      className="flex flex-col rounded-xl border p-3.5 transition-all hover:shadow-sm"
+      style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)', backdropFilter: 'blur(12px)' }}
+    >
+      <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--theme-muted)]">{label}</span>
+      <span className="mt-1 text-[22px] font-bold leading-none text-[var(--theme-text)]">{value}</span>
+      {sub && <span className="mt-0.5 text-[11px] text-[var(--theme-muted)]">{sub}</span>}
+    </div>
+  )
+  return to ? <Link to={to}>{inner}</Link> : inner
+}
 
 function Dashboard() {
   const brand = useBrand()
   const contactsQuery = useQuery({ queryKey: ['dash', 'contacts'], queryFn: () => fetchContacts() })
   const highlightsQuery = useQuery({ queryKey: ['dash', 'highlights'], queryFn: () => fetchHighlights(brand.id) })
+  const statsQuery = useQuery({ queryKey: ['dash', 'stats', brand.id], queryFn: () => fetchStats(brand.id) })
 
   const contactCount = contactsQuery.data?.length ?? 0
   const attentionCount = highlightsQuery.data?.attention ?? 0
+  const stats = statsQuery.data
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -54,7 +73,7 @@ function Dashboard() {
 
         {/* ── Hero ────────────────────────────────────────────── */}
         <div
-          className="relative mb-7 overflow-hidden rounded-2xl p-7"
+          className="relative mb-6 overflow-hidden rounded-2xl p-7"
           style={{
             background: `
               radial-gradient(ellipse 65% 80% at 0% 50%, color-mix(in srgb, ${brand.accentColor} 28%, transparent) 0%, transparent 70%),
@@ -63,22 +82,15 @@ function Dashboard() {
             `,
           }}
         >
-          {/* Subtle dot grid */}
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.07]"
-            style={{
-              backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)`,
-              backgroundSize: '22px 22px',
-            }}
+            style={{ backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)`, backgroundSize: '22px 22px' }}
           />
           <div className="relative z-10">
             <p className="text-[13px] font-medium text-white/70">{greeting}</p>
-            <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight text-white">
-              {brand.name}
-            </h1>
+            <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight text-white">{brand.name}</h1>
             <p className="mt-2 max-w-md text-[13px] leading-relaxed text-white/75">
-              Your AI-native operating system — contacts, conversations,
-              campaigns, and content, with an AI assistant woven through it all.
+              Your AI-native operating system — contacts, conversations, campaigns, and content, with an AI assistant woven through it all.
             </p>
             <div className="mt-5 flex flex-wrap gap-2.5">
               <Link
@@ -93,7 +105,7 @@ function Dashboard() {
                   to="/highlights"
                   className="flex items-center gap-2 rounded-xl bg-white/12 px-4 py-2 text-[13px] font-medium text-white/90 backdrop-blur-sm transition-all hover:bg-white/20"
                 >
-                  <span className="h-2 w-2 rounded-full bg-white/90" />
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-white/90" />
                   {attentionCount} need attention
                 </Link>
               )}
@@ -107,6 +119,18 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* ── Stats strip ──────────────────────────────────────── */}
+        {stats && (
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            <StatCard label="Pipeline" value={stats.pipeline.lead + stats.pipeline.contacted + stats.pipeline.qualified} sub="active leads" to="/contacts" />
+            <StatCard label="Unread" value={stats.conversations.unread} sub="conversations" to="/conversations" />
+            <StatCard label="This week" value={stats.appointments.thisWeek} sub="appointments" to="/appointments" />
+            <StatCard label="Scheduled" value={stats.social.scheduled} sub="social posts" to="/social" />
+            <StatCard label="Campaigns sent" value={stats.campaigns.sent} sub={stats.campaigns.deliveryRate != null ? `${stats.campaigns.deliveryRate}% delivered` : 'no sends yet'} to="/campaigns" />
+            <StatCard label="Active projects" value={stats.projects.active} to="/projects" />
+          </div>
+        )}
+
         {/* ── Module tiles ─────────────────────────────────────── */}
         <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-[var(--theme-muted)] opacity-75">
           Workspace
@@ -116,27 +140,15 @@ function Dashboard() {
             <Link
               key={t.to}
               to={t.to}
-              className="group relative overflow-hidden rounded-xl border border-[var(--theme-border)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
-              style={{ background: 'var(--theme-card)', backdropFilter: 'blur(12px)' }}
+              className="group relative overflow-hidden rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+              style={{ background: 'var(--theme-card)', backdropFilter: 'blur(12px)', borderColor: 'var(--theme-border)' }}
             >
-              {/* Hover accent wash */}
-              <div
-                className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                style={{ background: 'var(--theme-hover)' }}
-              />
+              <div className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 group-hover:opacity-100" style={{ background: 'var(--theme-hover)' }} />
               <div className="relative z-10">
-                <div
-                  className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105"
-                  style={{
-                    background: 'var(--theme-accent-soft)',
-                    color: 'var(--theme-accent)',
-                  }}
-                >
+                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105" style={{ background: 'var(--theme-accent-soft)', color: 'var(--theme-accent)' }}>
                   <HugeiconsIcon icon={t.icon} size={16} strokeWidth={1.8} />
                 </div>
-                <div className="text-[13px] font-semibold leading-tight text-[var(--theme-text)]">
-                  {t.label}
-                </div>
+                <div className="text-[13px] font-semibold leading-tight text-[var(--theme-text)]">{t.label}</div>
                 <div className="mt-0.5 text-[11px] text-[var(--theme-muted)]">{t.desc}</div>
               </div>
             </Link>
