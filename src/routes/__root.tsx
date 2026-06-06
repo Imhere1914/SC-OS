@@ -8,10 +8,12 @@ import {
   Copy01Icon,
   DashboardSquare01Icon,
   Layout01Icon,
+  ImageAdd01Icon,
   Mail01Icon,
   Menu01Icon,
   PlugSocketIcon,
   Share04Icon,
+  StarIcon,
   UserCircleIcon,
   UserGroupIcon,
 } from '@hugeicons/core-free-icons'
@@ -34,6 +36,7 @@ function navItems(brandId: string): { section: string; items: NavItem[] }[] {
       items: [
         { to: '/', label: 'Dashboard', icon: DashboardSquare01Icon },
         { to: '/chat', label: 'Assistant', icon: Chat01Icon },
+        { to: '/highlights', label: 'Highlights', icon: StarIcon },
       ],
     },
     {
@@ -51,6 +54,7 @@ function navItems(brandId: string): { section: string; items: NavItem[] }[] {
         { to: '/campaigns', label: 'Campaigns', icon: Mail01Icon },
         { to: '/pages', label: 'Pages', icon: Layout01Icon },
         { to: '/templates', label: 'Templates', icon: Copy01Icon },
+        { to: '/media', label: 'Media Studio', icon: ImageAdd01Icon },
       ],
     },
     {

@@ -10,6 +10,9 @@ import { registerPages } from './routes/pages'
 import { registerTemplates } from './routes/templates'
 import { registerAvatars } from './routes/avatars'
 import { registerPlugins } from './routes/plugins'
+import { registerHighlights } from './routes/highlights'
+import { registerMedia } from './routes/media'
+import { registerChat } from './routes/chat'
 
 const app = new Hono()
 
@@ -35,6 +38,9 @@ registerPages(app)
 registerTemplates(app)
 registerAvatars(app)
 registerPlugins(app)
+registerHighlights(app)
+registerMedia(app)
+registerChat(app)
 
 const port = Number(process.env.API_PORT ?? 8787)
 serve({ fetch: app.fetch, port })
