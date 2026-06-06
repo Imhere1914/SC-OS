@@ -12,6 +12,7 @@ import {
   PencilEdit02Icon,
   SmartPhone01Icon,
   Tick02Icon,
+  Time01Icon,
   UserCircleIcon,
 } from '@hugeicons/core-free-icons'
 import {
@@ -44,6 +45,7 @@ async function fetchContactDetail(id: string) {
     conversations: { id: string; contact_name: string | null; subject: string | null; channel: string; status: string; updated_at: string }[]
     appointments: { id: string; title: string; starts_at: string; status: string; notes: string }[]
     invoices: { id: string; invoice_number: string; total: number; status: string; due_date?: string; created_at: string }[]
+    activity: { id: string; type: string; description: string; created_at: string }[]
   }>
 }
 
@@ -120,7 +122,7 @@ function ContactDetail() {
     onSuccess: () => { toast('Contact deleted'); void navigate({ to: '/contacts' }) },
   })
 
-  const { contact, conversations = [], appointments = [], invoices = [] } = detailQuery.data ?? {}
+  const { contact, conversations = [], appointments = [], invoices = [], activity = [] } = detailQuery.data ?? {}
 
   if (detailQuery.isLoading) {
     return <div className="flex min-h-full items-center justify-center text-sm text-[var(--theme-muted)]">Loading…</div>
@@ -284,6 +286,26 @@ function ContactDetail() {
               <Link to="/conversations" className="mt-3 block text-center text-[11px] text-[var(--theme-accent)] hover:underline">Go to Conversations</Link>
             </Section>
 
+            {/* Activity timeline */}
+            {activity.length > 0 && (
+              <Section title="Activity" icon={Time01Icon}>
+                <div className="space-y-3">
+                  {activity.slice(0, 15).map((ev, i) => (
+                    <div key={ev.id} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{ background: 'var(--theme-accent)' }} />
+                        {i < activity.slice(0, 15).length - 1 && <span className="mt-1 flex-1 w-px bg-[var(--theme-border)]" />}
+                      </div>
+                      <div className="pb-3 min-w-0">
+                        <p className="text-xs text-[var(--theme-text)]">{ev.description}</p>
+                        <p className="mt-0.5 text-[9px] text-[var(--theme-muted)]">{new Date(ev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
             {/* Invoices */}
             <Section title={`Invoices (${invoices.length})`} icon={Money01Icon}>
               {invoices.length === 0 ? (
@@ -291,7 +313,7 @@ function ContactDetail() {
               ) : (
                 <div className="space-y-2">
                   {invoices.map(inv => (
-                    <div key={inv.id} className="flex items-center justify-between rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2.5">
+                    <Link key={inv.id} to="/invoices/$id" params={{ id: inv.id }} className="flex items-center justify-between rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] px-3 py-2.5 hover:bg-[var(--theme-hover)]">
                       <div>
                         <p className="font-mono text-[11px] text-[var(--theme-muted)]">{inv.invoice_number}</p>
                         <p className="text-sm font-bold text-[var(--theme-text)]">{formatCurrency(inv.total)}</p>
@@ -307,7 +329,7 @@ function ContactDetail() {
                           <p className="mt-0.5 text-[10px] text-[var(--theme-muted)]">Due {new Date(inv.due_date).toLocaleDateString()}</p>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

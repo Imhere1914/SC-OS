@@ -8,6 +8,7 @@ import { getContact } from '../stores/contacts-store'
 import { listConversations } from '../stores/conversations-store'
 import { listAppointments } from '../stores/appointments-store'
 import { listInvoices } from '../stores/invoices-store'
+import { listActivityForContact } from '../stores/activity-store'
 
 export function registerContactDetail(app: Hono): void {
   app.get('/api/contacts/:id/detail', (c) => {
@@ -27,7 +28,8 @@ export function registerContactDetail(app: Hono): void {
       (i) => i.contact_id === id || i.contact_email === contact.email,
     ).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).slice(0, 20)
 
-    return c.json({ contact, conversations, appointments, invoices })
+    const activity = listActivityForContact(id, 40)
+    return c.json({ contact, conversations, appointments, invoices, activity })
   })
 
   // ── Global search ─────────────────────────────────────────────────────────

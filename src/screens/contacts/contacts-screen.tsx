@@ -10,10 +10,12 @@ import {
   Mail01Icon,
   Search01Icon,
   SmartPhone01Icon,
+  Upload01Icon,
   UserGroupIcon,
   ViewIcon,
   ListViewIcon,
 } from '@hugeicons/core-free-icons'
+import { CsvImportDialog } from '@/components/CsvImportDialog'
 import {
   CONTACT_STAGES,
   STAGE_LABELS,
@@ -159,6 +161,7 @@ export function ContactsScreen() {
   const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState<ContactStage | 'all'>('all')
   const [showCreate, setShowCreate] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editing, setEditing] = useState<Contact | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
 
@@ -201,6 +204,13 @@ export function ContactsScreen() {
       onRefresh={invalidate}
       action={
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--theme-border)] px-3 py-1.5 text-xs font-medium text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]"
+            title="Import from CSV"
+          >
+            <HugeiconsIcon icon={Upload01Icon} size={13} /> Import
+          </button>
           {/* View toggle */}
           <div className="flex rounded-lg border border-[var(--theme-border)] bg-[var(--theme-card)] p-0.5">
             <button
@@ -305,6 +315,7 @@ export function ContactsScreen() {
         </div>
       )}
 
+      <CsvImportDialog open={showImport} onClose={() => setShowImport(false)} />
       <ContactDialog open={showCreate} initial={EMPTY_FORM} title={`New ${term === 'Patients' ? 'Patient' : 'Contact'}`} isSubmitting={createMutation.isPending}
         onClose={() => setShowCreate(false)} onSubmit={(f) => createMutation.mutate(fromForm(f))} />
       {/* Edit dialog still available but we now navigate for viewing */}

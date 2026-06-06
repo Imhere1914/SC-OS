@@ -27,6 +27,7 @@ import { registerAvailability } from './routes/availability'
 import { registerInvoices } from './routes/invoices'
 import { registerContactDetail } from './routes/contact-detail'
 import { registerReports } from './routes/reports'
+import { registerNotifications } from './routes/notifications'
 import { isEmailConfigured } from './stores/email-sender'
 
 const app = new Hono()
@@ -76,6 +77,7 @@ registerAvailability(app)
 registerInvoices(app)
 registerContactDetail(app)
 registerReports(app)
+registerNotifications(app)
 
 // ── Static file serving (production) ────────────────────────────────────────
 // In dev, Vite serves the frontend on :4321. In production (SERVE_STATIC=true

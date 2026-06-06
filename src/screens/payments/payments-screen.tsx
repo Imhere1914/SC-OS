@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { Link } from '@tanstack/react-router'
 import {
   Add01Icon,
   Delete01Icon,
@@ -446,6 +447,15 @@ export function PaymentsScreen() {
                           Paid
                         </button>
                       )}
+                      <Link
+                        to="/invoices/$id"
+                        params={{ id: inv.id }}
+                        className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+                        title="View / Print"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <HugeiconsIcon icon={Invoice01Icon} size={14} className="text-[var(--theme-muted)]" />
+                      </Link>
                       <button
                         onClick={() => setEditing(inv)}
                         className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"

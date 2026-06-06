@@ -26,6 +26,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { useBrand } from '@/contexts/BrandContext'
 import { cn } from '@/lib/utils'
+import { NotificationsBell } from '@/components/NotificationsBell'
 
 type NavItem = {
   to: string
@@ -209,7 +210,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             {brand.shortName}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-semibold leading-tight text-[var(--theme-text)]">
               {brand.name}
             </div>
@@ -217,6 +218,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               AI Operating System
             </div>
           </div>
+          <NotificationsBell />
         </div>
       </div>
 
