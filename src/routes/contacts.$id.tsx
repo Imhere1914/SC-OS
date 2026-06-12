@@ -3,13 +3,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
+  Add01Icon,
+  AiMagicIcon,
   ArrowLeft01Icon,
   Building01Icon,
   Calendar01Icon,
+  Cancel01Icon,
   Delete01Icon,
+  FlowSquareIcon,
   Mail01Icon,
   Money01Icon,
   PencilEdit02Icon,
+  PlayIcon,
   SmartPhone01Icon,
   Tick02Icon,
   Time01Icon,
@@ -21,13 +26,30 @@ import {
   deleteContact,
   updateContact,
 } from '@/lib/contacts-api'
+import { fetchAutomations, type AutomationRecord } from '@/lib/automations-api'
 import type { Contact, ContactStage, UpdateContactInput } from '@/lib/contacts-api'
+import { computeLeadScore } from '@/lib/lead-score'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_BG, formatCurrency } from '@/lib/invoices-api'
 import { toast } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { useBrand } from '@/contexts/BrandContext'
 
 export const Route = createFileRoute('/contacts/$id')({ component: ContactDetail })
+
+// ── Timeline event display config ──────────────────────────────────────────
+const TIMELINE_CONFIG: Record<string, { emoji: string; color: string; label: string }> = {
+  contact_created:      { emoji: '👤', color: '#6366f1', label: 'Contact created' },
+  stage_changed:        { emoji: '🔄', color: '#f59e0b', label: 'Stage changed' },
+  note_updated:         { emoji: '📝', color: '#64748b', label: 'Note updated' },
+  appointment_created:  { emoji: '📅', color: '#22c55e', label: 'Appointment booked' },
+  appointment_completed:{ emoji: '✅', color: '#10b981', label: 'Appointment completed' },
+  invoice_created:      { emoji: '🧾', color: '#8b5cf6', label: 'Invoice created' },
+  invoice_paid:         { emoji: '💰', color: '#10b981', label: 'Invoice paid' },
+  form_submitted:       { emoji: '📋', color: '#0ea5e9', label: 'Form submitted' },
+  conversation_started: { emoji: '💬', color: '#0ea5e9', label: 'Conversation' },
+  tag_added:            { emoji: '🏷️', color: '#ec4899', label: 'Tag added' },
+  custom:               { emoji: '•',  color: '#94a3b8', label: 'Activity' },
+}
 
 const STAGE_COLORS: Record<ContactStage, string> = {
   lead: '#94a3b8',
@@ -47,6 +69,87 @@ async function fetchContactDetail(id: string) {
     invoices: { id: string; invoice_number: string; total: number; status: string; due_date?: string; created_at: string }[]
     activity: { id: string; type: string; description: string; created_at: string }[]
   }>
+}
+
+// ── Custom fields panel ──────────────────────────────────────────────────────
+function CustomFieldsPanel({ fields, onSave }: {
+  fields: Record<string, string>
+  onSave: (fields: Record<string, string>) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Array<{ key: string; value: string }>>([])
+
+  const entries = Object.entries(fields)
+
+  const startEdit = () => {
+    setDraft(entries.length > 0 ? entries.map(([k, v]) => ({ key: k, value: v })) : [{ key: '', value: '' }])
+    setEditing(true)
+  }
+
+  const save = () => {
+    const clean: Record<string, string> = {}
+    draft.forEach(({ key, value }) => { if (key.trim()) clean[key.trim()] = value })
+    onSave(clean)
+    setEditing(false)
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)]">
+      <div className="flex items-center justify-between border-b border-[var(--theme-border)] px-4 py-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--theme-muted)]">Custom Fields</h2>
+        {!editing && (
+          <button onClick={startEdit} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-[var(--theme-accent)] hover:bg-[var(--theme-hover)]">
+            <HugeiconsIcon icon={PencilEdit02Icon} size={11} /> Edit
+          </button>
+        )}
+      </div>
+      <div className="p-4">
+        {editing ? (
+          <div className="space-y-2">
+            {draft.map((row, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={row.key}
+                  onChange={e => setDraft(d => d.map((r, j) => j === i ? { ...r, key: e.target.value } : r))}
+                  placeholder="Field name"
+                  className="w-32 shrink-0 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2 py-1 text-[11px] text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+                />
+                <input
+                  value={row.value}
+                  onChange={e => setDraft(d => d.map((r, j) => j === i ? { ...r, value: e.target.value } : r))}
+                  placeholder="Value"
+                  className="flex-1 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2 py-1 text-[11px] text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+                />
+                <button onClick={() => setDraft(d => d.filter((_, j) => j !== i))} className="shrink-0 text-[var(--theme-muted)] hover:text-[var(--theme-danger)]">
+                  <HugeiconsIcon icon={Cancel01Icon} size={12} />
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setDraft(d => [...d, { key: '', value: '' }])} className="flex items-center gap-1 text-[10px] text-[var(--theme-accent)] hover:underline">
+                <HugeiconsIcon icon={Add01Icon} size={11} /> Add field
+              </button>
+              <div className="ml-auto flex gap-2">
+                <button onClick={() => setEditing(false)} className="rounded-lg px-2 py-1 text-[10px] text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]">Cancel</button>
+                <button onClick={save} className="rounded-lg px-2 py-1 text-[10px] font-medium text-white" style={{ background: 'var(--theme-accent)' }}>Save</button>
+              </div>
+            </div>
+          </div>
+        ) : entries.length === 0 ? (
+          <button onClick={startEdit} className="text-xs text-[var(--theme-muted)] hover:text-[var(--theme-accent)]">+ Add custom fields</button>
+        ) : (
+          <dl className="space-y-1.5">
+            {entries.map(([k, v]) => (
+              <div key={k} className="flex items-baseline gap-2">
+                <dt className="w-32 shrink-0 truncate text-[10px] font-medium text-[var(--theme-muted)]">{k}</dt>
+                <dd className="min-w-0 truncate text-xs text-[var(--theme-text)]">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function Section({ title, icon, children }: { title: string; icon: typeof Mail01Icon; children: React.ReactNode }) {
@@ -94,6 +197,170 @@ function StageChip({ stage, onUpdate }: { stage: ContactStage; onUpdate: (s: Con
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── AI Insights panel ─────────────────────────────────────────────────────
+function AiInsightsPanel({ contact, activity }: {
+  contact: Contact
+  activity: { type: string; description: string; created_at: string }[]
+}) {
+  const [insight, setInsight] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const generate = async () => {
+    setLoading(true)
+    setInsight(null)
+    try {
+      const prompt = [
+        `You are a CRM assistant. Analyze this contact and provide 3-5 concise, actionable insights.`,
+        ``,
+        `Contact: ${contact.name}`,
+        contact.company ? `Company: ${contact.company}` : '',
+        contact.email ? `Email: ${contact.email}` : '',
+        contact.phone ? `Phone: ${contact.phone}` : '',
+        `Stage: ${contact.stage}`,
+        contact.tags.length ? `Tags: ${contact.tags.join(', ')}` : '',
+        contact.notes ? `Notes: ${contact.notes}` : '',
+        ``,
+        `Recent activity (last 5 events):`,
+        ...activity.slice(0, 5).map(e => `- ${e.description}`),
+        ``,
+        `Provide: 1) Next best action, 2) Talking points, 3) Risk/opportunity flags. Be specific and brief.`,
+      ].filter(Boolean).join('\n')
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] }),
+      })
+      const data = await res.json() as { reply?: string }
+      setInsight(data.reply ?? 'No insights available.')
+    } catch {
+      setInsight('Failed to load insights — check AI configuration.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)]">
+      <div className="flex items-center justify-between border-b border-[var(--theme-border)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon icon={AiMagicIcon} size={14} className="text-[var(--theme-accent)]" />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--theme-muted)]">AI Insights</h2>
+        </div>
+        <button
+          onClick={() => void generate()}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
+          style={{ background: 'var(--theme-accent)' }}
+        >
+          {loading ? (
+            <><span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Thinking…</>
+          ) : (
+            <><HugeiconsIcon icon={AiMagicIcon} size={12} /> {insight ? 'Refresh' : 'Generate'}</>
+          )}
+        </button>
+      </div>
+      <div className="p-4">
+        {!insight && !loading && (
+          <p className="text-xs text-[var(--theme-muted)]">
+            Click <strong>Generate</strong> to get AI-powered outreach suggestions, talking points, and next-step recommendations for this contact.
+          </p>
+        )}
+        {loading && (
+          <div className="space-y-2">
+            {[1,2,3].map(i => <div key={i} className="h-3 animate-pulse rounded bg-[var(--theme-hover)]" style={{ width: `${75 + i * 8}%` }} />)}
+          </div>
+        )}
+        {insight && (
+          <div className="prose prose-sm max-w-none">
+            {insight.split('\n').filter(Boolean).map((line, i) => {
+              const isBullet = /^[-•*\d]/.test(line.trim())
+              const isHeader = /^\*\*/.test(line.trim()) || /^#{1,3}\s/.test(line.trim())
+              const cleaned = line.replace(/\*\*/g, '').replace(/^#{1,3}\s/, '').trim()
+              if (isHeader) return <p key={i} className="mt-3 text-[11px] font-bold text-[var(--theme-text)] first:mt-0">{cleaned}</p>
+              if (isBullet) return <p key={i} className="text-[11px] leading-relaxed text-[var(--theme-text)]">• {cleaned.replace(/^[-•*\d+.]\s*/, '')}</p>
+              return <p key={i} className="text-[11px] leading-relaxed text-[var(--theme-muted)]">{cleaned}</p>
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Run automation panel ─────────────────────────────────────────────────────
+function RunAutomationPanel({ contact }: { contact: Contact }) {
+  const [running, setRunning] = useState<string | null>(null)
+  const [ran, setRan] = useState<Set<string>>(new Set())
+
+  const autoQuery = useQuery({
+    queryKey: ['automations-for-contact'],
+    queryFn: () => fetchAutomations(),
+    staleTime: 60_000,
+  })
+
+  const activeAutomations = (autoQuery.data ?? []).filter((a: AutomationRecord) => a.enabled)
+
+  const runAutomation = async (auto: AutomationRecord) => {
+    setRunning(auto.id)
+    try {
+      await fetch(`/api/automations/${auto.id}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: contact.id,
+          contact_name: contact.name,
+          contact_email: contact.email,
+          contact_stage: contact.stage,
+          contact_tags: contact.tags,
+        }),
+      })
+      setRan(prev => new Set([...prev, auto.id]))
+      toast(`"${auto.name}" triggered for ${contact.name}`)
+    } catch {
+      toast('Failed to run automation', { type: 'error' })
+    } finally {
+      setRunning(null)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)]">
+      <div className="flex items-center gap-2 border-b border-[var(--theme-border)] px-4 py-3">
+        <HugeiconsIcon icon={FlowSquareIcon} size={14} className="text-[var(--theme-accent)]" />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--theme-muted)]">Run Automation</h2>
+      </div>
+      <div className="p-3">
+        {autoQuery.isLoading ? (
+          <p className="text-xs text-[var(--theme-muted)]">Loading…</p>
+        ) : activeAutomations.length === 0 ? (
+          <p className="text-xs text-[var(--theme-muted)]">
+            No active automations. <a href="/automations" className="text-[var(--theme-accent)] hover:underline">Create one →</a>
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {activeAutomations.map((auto: AutomationRecord) => (
+              <button
+                key={auto.id}
+                onClick={() => void runAutomation(auto)}
+                disabled={running === auto.id || ran.has(auto.id)}
+                className="flex w-full items-center gap-2.5 rounded-lg border border-[var(--theme-border)] px-3 py-2 text-left transition-colors hover:bg-[var(--theme-hover)] disabled:opacity-60"
+              >
+                <span className="text-[14px]">{ran.has(auto.id) ? '✅' : running === auto.id ? '⏳' : '▶'}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-medium text-[var(--theme-text)]">{auto.name}</p>
+                  {auto.description && <p className="truncate text-[9px] text-[var(--theme-muted)]">{auto.description}</p>}
+                </div>
+                <HugeiconsIcon icon={PlayIcon} size={11} className="shrink-0 text-[var(--theme-accent)]" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -150,7 +417,7 @@ function ContactDetail() {
               <div className="mb-4 flex items-start justify-between">
                 <div
                   className="flex h-14 w-14 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-sm"
-                  style={{ background: `linear-gradient(135deg, ${accentColor}, color-mix(in srgb, ${accentColor} 60%, #7b3fe4))` }}
+                  style={{ background: `linear-gradient(135deg, ${accentColor}, color-mix(in srgb, ${accentColor} 60%, #000))` }}
                 >
                   {initials || <HugeiconsIcon icon={UserCircleIcon} size={24} />}
                 </div>
@@ -171,11 +438,23 @@ function ContactDetail() {
                 </p>
               )}
 
-              <div className="mt-3">
+              <div className="mt-3 flex items-center gap-2">
                 <StageChip
                   stage={contact.stage}
                   onUpdate={(s) => updateMutation.mutate({ stage: s })}
                 />
+                {(() => {
+                  const ls = computeLeadScore(contact)
+                  return (
+                    <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1" style={{ background: `${ls.color}20` }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: ls.color }} />
+                      <span className="text-[11px] font-bold" style={{ color: ls.color }}>
+                        Score {ls.score}
+                      </span>
+                      <span className="text-[10px] capitalize text-[var(--theme-muted)]">· {ls.tier}</span>
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Contact info */}
@@ -236,10 +515,19 @@ function ContactDetail() {
                 </div>
               )}
             </Section>
+
+            {/* ── Custom fields ── */}
+            <CustomFieldsPanel
+              fields={contact.custom_fields ?? {}}
+              onSave={(fields) => updateMutation.mutate({ custom_fields: fields })}
+            />
           </div>
 
           {/* ── Right: Linked records ─────────────────────────── */}
           <div className="space-y-4">
+            {/* AI Insights */}
+            <AiInsightsPanel contact={contact} activity={activity} />
+            <RunAutomationPanel contact={contact} />
             {/* Appointments */}
             <Section title={`Appointments (${appointments.length})`} icon={Calendar01Icon}>
               {appointments.length === 0 ? (
@@ -287,24 +575,44 @@ function ContactDetail() {
             </Section>
 
             {/* Activity timeline */}
-            {activity.length > 0 && (
-              <Section title="Activity" icon={Time01Icon}>
-                <div className="space-y-3">
-                  {activity.slice(0, 15).map((ev, i) => (
-                    <div key={ev.id} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{ background: 'var(--theme-accent)' }} />
-                        {i < activity.slice(0, 15).length - 1 && <span className="mt-1 flex-1 w-px bg-[var(--theme-border)]" />}
+            <Section title={`Activity${activity.length > 0 ? ` (${activity.length})` : ''}`} icon={Time01Icon}>
+              {activity.length === 0 ? (
+                <p className="py-2 text-xs text-[var(--theme-muted)]">
+                  No activity yet — actions like stage changes, notes, appointments, and conversations appear here automatically.
+                </p>
+              ) : (
+                <div>
+                  {activity.slice(0, 25).map((ev, i) => {
+                    const cfg = TIMELINE_CONFIG[ev.type] ?? { emoji: '•', color: '#94a3b8', label: 'Event' }
+                    const isLast = i === Math.min(activity.length, 25) - 1
+                    return (
+                      <div key={ev.id} className="flex gap-3">
+                        {/* Dot + line */}
+                        <div className="flex flex-col items-center pt-0.5">
+                          <span
+                            className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px]"
+                            style={{ background: `${cfg.color}18` }}
+                          >
+                            {cfg.emoji}
+                          </span>
+                          {!isLast && <span className="my-0.5 flex-1 w-px bg-[var(--theme-border)]" />}
+                        </div>
+                        {/* Content */}
+                        <div className={cn('min-w-0 pb-3', isLast && 'pb-0')}>
+                          <p className="text-[11px] font-medium" style={{ color: cfg.color }}>
+                            {cfg.label}
+                          </p>
+                          <p className="text-[11px] text-[var(--theme-text)]">{ev.description}</p>
+                          <p className="mt-0.5 text-[9px] text-[var(--theme-muted)]">
+                            {new Date(ev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="pb-3 min-w-0">
-                        <p className="text-xs text-[var(--theme-text)]">{ev.description}</p>
-                        <p className="mt-0.5 text-[9px] text-[var(--theme-muted)]">{new Date(ev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
-              </Section>
-            )}
+              )}
+            </Section>
 
             {/* Invoices */}
             <Section title={`Invoices (${invoices.length})`} icon={Money01Icon}>

@@ -28,23 +28,44 @@ const KIND_COLOR: Record<string, string> = {
 }
 const KIND_EMOJI: Record<string, string> = { social: '📣', campaign: '✉️' }
 
-const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-  scheduled: { bg: 'rgba(79,126,248,0.12)', text: '#4f7ef8' },
-  published: { bg: 'rgba(31,168,92,0.12)', text: '#1fa85c' },
-  sent: { bg: 'rgba(31,168,92,0.12)', text: '#1fa85c' },
-  draft: { bg: 'rgba(160,160,160,0.12)', text: '#888' },
-  failed: { bg: 'rgba(212,68,68,0.12)', text: '#d44' },
+const STATUS_HEX: Record<string, string> = {
+  scheduled: '#3b82f6',
+  published: '#10b981',
+  sent: '#10b981',
+  draft: '#94a3b8',
+  failed: '#ef4444',
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const color = STATUS_HEX[status] ?? STATUS_HEX.draft
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+      style={{
+        background: `color-mix(in srgb, ${color} 12%, var(--theme-card))`,
+        color,
+        border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      {status}
+    </span>
+  )
 }
 
 function EventPill({ ev, compact = false }: { ev: CalendarEvent; compact?: boolean }) {
   const color = KIND_COLOR[ev.kind] ?? '#888'
   return (
     <div
-      className="flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-tight"
-      style={{ background: `${color}18`, color, borderLeft: `2px solid ${color}` }}
+      className="flex min-w-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-tight transition-all duration-150"
+      style={{
+        background: `color-mix(in srgb, ${color} 14%, var(--theme-card))`,
+        color,
+        border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+      }}
       title={`${ev.title}${ev.detail ? ' · ' + ev.detail : ''}`}
     >
-      <span className="shrink-0">{KIND_EMOJI[ev.kind]}</span>
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
       {!compact && <span className="truncate">{ev.title}</span>}
     </div>
   )
@@ -81,10 +102,15 @@ function MonthGrid({ year, month, eventsByDate }: {
           return (
             <div
               key={i}
-              className="min-h-[80px] rounded-xl border p-1.5"
+              className={
+                'min-h-[80px] rounded-xl border bg-[var(--theme-card)] p-1.5 transition-all duration-150' +
+                (cell.day ? ' hover:-translate-y-px hover:bg-[var(--theme-hover)] hover:shadow-sm' : '')
+              }
               style={{
-                background: isToday ? `color-mix(in srgb, ${brand.accentColor} 6%, var(--theme-card))` : 'var(--theme-card)',
+                background: isToday ? `color-mix(in srgb, ${brand.accentColor} 6%, var(--theme-card))` : undefined,
                 borderColor: isToday ? brand.accentColor : 'var(--theme-border)',
+                boxShadow: isToday ? `0 0 0 2px color-mix(in srgb, ${brand.accentColor} 30%, transparent)` : undefined,
+                backdropFilter: 'blur(10px)',
                 opacity: cell.day ? 1 : 0,
               }}
             >
@@ -135,9 +161,18 @@ function AgendaList({ events }: { events: CalendarEvent[] }) {
 
   if (grouped.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed py-16 text-center" style={{ borderColor: 'var(--theme-border)' }}>
-        <p className="text-[32px]">📅</p>
-        <p className="mt-2 text-[14px] font-medium text-[var(--theme-text)]">Nothing scheduled</p>
+      <div className="flex flex-col items-center rounded-2xl border border-dashed py-16 text-center" style={{ borderColor: 'var(--theme-border)' }}>
+        <span
+          className="flex h-14 w-14 items-center justify-center rounded-full"
+          style={{
+            background:
+              'linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 18%, var(--theme-card)), color-mix(in srgb, #000 14%, var(--theme-card)))',
+            color: 'var(--theme-accent)',
+          }}
+        >
+          <HugeiconsIcon icon={Calendar01Icon} size={24} />
+        </span>
+        <p className="mt-3 text-[14px] font-semibold text-[var(--theme-text)]">Nothing scheduled</p>
         <p className="mt-1 text-[13px] text-[var(--theme-muted)]">Schedule a social post or campaign to see it here.</p>
       </div>
     )
@@ -155,11 +190,10 @@ function AgendaList({ events }: { events: CalendarEvent[] }) {
           </div>
           <div className="flex flex-col gap-2">
             {evs.map(ev => {
-              const badge = STATUS_BADGE[ev.status] ?? STATUS_BADGE.draft
               return (
                 <div
                   key={ev.id}
-                  className="flex items-center gap-3 rounded-xl border p-3"
+                  className="flex items-center gap-3 rounded-xl border p-3 transition-all duration-150 hover:-translate-y-px hover:shadow-md"
                   style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)', backdropFilter: 'blur(10px)' }}
                 >
                   <span
@@ -173,14 +207,9 @@ function AgendaList({ events }: { events: CalendarEvent[] }) {
                     {ev.detail && <p className="truncate text-[11px] text-[var(--theme-muted)]">{ev.detail}</p>}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                      style={{ background: badge.bg, color: badge.text }}
-                    >
-                      {ev.status}
-                    </span>
+                    <StatusBadge status={ev.status} />
                     {ev.scheduled_at && (
-                      <span className="text-[10px] text-[var(--theme-muted)]">
+                      <span className="text-[10px] tabular-nums text-[var(--theme-muted)]">
                         {new Date(ev.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </span>
                     )}
@@ -242,9 +271,12 @@ export function CalendarScreen() {
             <button
               key={v}
               onClick={() => setView(v)}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all duration-150"
               style={view === v
-                ? { background: 'var(--theme-accent)', color: 'white' }
+                ? {
+                    background: 'color-mix(in srgb, var(--theme-accent) 14%, var(--theme-card))',
+                    color: 'var(--theme-accent)',
+                  }
                 : { color: 'var(--theme-muted)' }
               }
             >
@@ -259,18 +291,18 @@ export function CalendarScreen() {
       <div className="mb-4 flex items-center justify-between">
         <button
           onClick={prev}
-          className="rounded-xl border p-2 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-hover)]"
-          style={{ borderColor: 'var(--theme-border)' }}
+          className="rounded-lg p-2 text-[var(--theme-muted)] transition-all duration-150 hover:bg-[var(--theme-hover)] hover:text-[var(--theme-text)]"
+          title="Previous month"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={15} />
         </button>
-        <h2 className="text-[14px] font-semibold text-[var(--theme-text)]">
+        <h2 className="text-[14px] font-semibold tabular-nums text-[var(--theme-text)]">
           {MONTHS[month]} {year}
         </h2>
         <button
           onClick={next}
-          className="rounded-xl border p-2 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-hover)]"
-          style={{ borderColor: 'var(--theme-border)' }}
+          className="rounded-lg p-2 text-[var(--theme-muted)] transition-all duration-150 hover:bg-[var(--theme-hover)] hover:text-[var(--theme-text)]"
+          title="Next month"
         >
           <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
         </button>

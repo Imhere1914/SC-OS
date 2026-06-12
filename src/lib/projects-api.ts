@@ -22,6 +22,10 @@ export type Project = {
   notes: string
   created_at: string
   updated_at: string
+  // Enriched at query time from project tasks
+  task_count?: number
+  tasks_done?: number
+  task_progress?: number | null
 }
 
 export type CreateProjectInput = {

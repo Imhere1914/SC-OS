@@ -146,7 +146,7 @@ function BookingPage() {
   })
 
   // Accent colour — derive from brand
-  const accent = brand === 'hfm' ? '#7c6f9b' : '#2f6df6'
+  const accent = brand === 'hfm' ? '#a3843b' : '#22c55e'
 
   if (settingsQuery.isLoading) {
     return (

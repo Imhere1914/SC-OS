@@ -28,59 +28,59 @@ export function registerContactDetail(app: Hono): void {
       (i) => i.contact_id === id || i.contact_email === contact.email,
     ).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).slice(0, 20)
 
-    const activity = listActivityForContact(id, 40)
-    return c.json({ contact, conversations, appointments, invoices, activity })
+    const storedActivity = listActivityForContact(id, 100)
+
+    // Synthesise a unified timeline from all sources
+    type TimelineEvent = {
+      id: string; type: string; description: string; meta?: Record<string, string>; created_at: string
+    }
+    const timeline: TimelineEvent[] = [...storedActivity]
+
+    // Add conversation events not already in store
+    for (const cv of conversations) {
+      const syntheticId = `conv-${cv.id}`
+      if (!storedActivity.some(e => e.meta?.conversation_id === cv.id)) {
+        timeline.push({
+          id: syntheticId,
+          type: 'conversation_started',
+          description: `${cv.channel.charAt(0).toUpperCase() + cv.channel.slice(1)} conversation${cv.subject ? `: "${cv.subject}"` : ''} (${cv.status})`,
+          meta: { conversation_id: cv.id },
+          created_at: (cv as { created_at?: string }).created_at ?? cv.updated_at,
+        })
+      }
+    }
+
+    // Add appointment events not already in store
+    for (const a of appointments) {
+      const syntheticId = `appt-${a.id}`
+      if (!storedActivity.some(e => e.meta?.appointment_id === a.id)) {
+        timeline.push({
+          id: syntheticId,
+          type: a.status === 'completed' ? 'appointment_completed' : 'appointment_created',
+          description: `Appointment: ${a.title} on ${new Date(a.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          meta: { appointment_id: a.id, status: a.status },
+          created_at: a.starts_at,
+        })
+      }
+    }
+
+    // Add invoice events not already in store
+    for (const inv of invoices) {
+      if (!storedActivity.some(e => e.meta?.invoice_id === inv.id)) {
+        timeline.push({
+          id: `inv-${inv.id}`,
+          type: inv.status === 'paid' ? 'invoice_paid' : 'invoice_created',
+          description: `Invoice ${inv.invoice_number} — $${inv.total.toFixed(2)} (${inv.status})`,
+          meta: { invoice_id: inv.id },
+          created_at: inv.created_at,
+        })
+      }
+    }
+
+    // Sort newest first
+    timeline.sort((a, b) => b.created_at.localeCompare(a.created_at))
+
+    return c.json({ contact, conversations, appointments, invoices, activity: timeline.slice(0, 50) })
   })
 
-  // ── Global search ─────────────────────────────────────────────────────────
-  // GET /api/search?q=term&brand=xxx
-  // Returns hits grouped by type (contacts, conversations, appointments, invoices).
-  app.get('/api/search', (c) => {
-    const url = new URL(c.req.url)
-    const q = (url.searchParams.get('q') ?? '').toLowerCase().trim()
-    const brand = url.searchParams.get('brand')
-    if (!q || q.length < 2) return c.json({ hits: [] })
-
-    const bf = (b?: string | null) => !brand || !b || b === brand || b === 'default'
-
-    type Hit = {
-      id: string
-      type: 'contact' | 'conversation' | 'appointment' | 'invoice'
-      title: string
-      sub: string
-      link: string
-    }
-
-    const hits: Hit[] = []
-
-    // Contacts
-    const { listContacts } = require('../stores/contacts-store') as typeof import('../stores/contacts-store')
-    for (const ct of listContacts({})) {
-      if (!bf(ct.brand)) continue
-      if (!`${ct.name} ${ct.email ?? ''} ${ct.company ?? ''} ${ct.tags.join(' ')}`.toLowerCase().includes(q)) continue
-      hits.push({ id: ct.id, type: 'contact', title: ct.name, sub: ct.email ?? ct.phone ?? ct.company ?? ct.stage, link: `/contacts/${ct.id}` })
-    }
-
-    // Conversations
-    for (const cv of listConversations({})) {
-      if (!bf((cv as { brand?: string }).brand)) continue
-      if (!`${cv.contact_name ?? ''} ${cv.subject ?? ''} ${cv.channel}`.toLowerCase().includes(q)) continue
-      hits.push({ id: cv.id, type: 'conversation', title: cv.contact_name ?? 'Unknown', sub: cv.subject ?? cv.channel, link: '/conversations' })
-    }
-
-    // Appointments
-    for (const a of listAppointments({})) {
-      if (!bf((a as { brand?: string }).brand)) continue
-      if (!`${a.title} ${a.contact_name ?? ''} ${a.notes}`.toLowerCase().includes(q)) continue
-      hits.push({ id: a.id, type: 'appointment', title: a.title, sub: a.contact_name ?? '', link: '/appointments' })
-    }
-
-    // Invoices
-    for (const inv of listInvoices(brand ?? undefined)) {
-      if (!`${inv.invoice_number} ${inv.contact_name} ${inv.contact_email ?? ''}`.toLowerCase().includes(q)) continue
-      hits.push({ id: inv.id, type: 'invoice', title: `${inv.invoice_number} — ${inv.contact_name}`, sub: `$${inv.total.toFixed(2)} · ${inv.status}`, link: '/payments' })
-    }
-
-    return c.json({ hits: hits.slice(0, 20) })
-  })
 }

@@ -5,20 +5,21 @@
 import type { Hono } from 'hono'
 import { listContacts } from '../stores/contacts-store'
 import { listAppointments } from '../stores/appointments-store'
+import { listConversations } from '../stores/conversations-store'
 import { listInvoices } from '../stores/invoices-store'
 import { listCampaigns } from '../stores/campaigns-store'
 import { listPosts } from '../stores/social-store'
+import { readRuns } from '../stores/automations-store'
 
 function monthKey(iso: string): string {
   const d = new Date(iso)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function last6Months(): string[] {
+function lastNMonths(n: number, anchorDate = new Date()): string[] {
   const keys: string[] = []
-  const now = new Date()
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1)
     keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   return keys
@@ -32,24 +33,54 @@ function labelMonth(key: string): string {
 
 export function registerReports(app: Hono): void {
   app.get('/api/reports', (c) => {
-    const brand = new URL(c.req.url).searchParams.get('brand')
+    const qs = new URL(c.req.url).searchParams
+    const brand = qs.get('brand')
     const bf = (b?: string | null) => !brand || !b || b === brand || b === 'default'
 
-    const contacts = listContacts({}).filter(ct => bf(ct.brand))
-    const appts = listAppointments({}).filter(a => bf((a as { brand?: string }).brand))
-    const invoices = listInvoices(brand ?? undefined)
-    const campaigns = listCampaigns({}).filter(cp => bf((cp as { brand?: string }).brand))
-    const posts = listPosts({}).filter(p => bf((p as { brand?: string }).brand))
+    // Date range: `since` is an ISO date string (inclusive), `until` defaults to now
+    const sinceParam = qs.get('since')
+    const untilParam = qs.get('until')
+    const sinceDate = sinceParam ? new Date(sinceParam) : null
+    const untilDate = untilParam ? new Date(untilParam) : new Date()
 
-    const months = last6Months()
+    const inRange = (iso: string | null | undefined) => {
+      if (!iso) return true
+      const d = new Date(iso)
+      if (sinceDate && d < sinceDate) return false
+      if (d > untilDate) return false
+      return true
+    }
 
-    // ── Pipeline funnel ───────────────────────────────────────────────────────
+    const allContacts = listContacts({}).filter(ct => bf(ct.brand))
+    const allAppts    = listAppointments({}).filter(a => bf((a as { brand?: string }).brand))
+    const allConvs    = listConversations({}).filter(cv => bf((cv as { brand?: string }).brand))
+    const allInvoices = listInvoices(brand ?? undefined)
+    const allCampaigns = listCampaigns({}).filter(cp => bf((cp as { brand?: string }).brand))
+    const allPosts    = listPosts({}).filter(p => bf((p as { brand?: string }).brand))
+    const allRuns     = readRuns()
+
+    // Apply date range to time-series data; pipeline/totals stay all-time for pipeline view
+    const contacts  = allContacts
+    const appts     = allAppts.filter(a => inRange(a.starts_at))
+    const convs     = allConvs.filter(cv => inRange((cv as { created_at?: string }).created_at))
+    const invoices  = allInvoices.filter(i => inRange(i.paid_at ?? i.created_at))
+    const campaigns = allCampaigns.filter(cp => inRange((cp as { created_at?: string }).created_at))
+    const posts     = allPosts.filter(p => inRange((p as { created_at?: string }).created_at))
+    const runs      = allRuns.filter(r => inRange(r.ran_at))
+
+    // Determine how many months to show based on range
+    const monthCount = sinceDate
+      ? Math.max(1, Math.min(24, Math.ceil((untilDate.getTime() - sinceDate.getTime()) / (30 * 24 * 60 * 60 * 1000)) + 1))
+      : 6
+    const months = lastNMonths(monthCount, untilDate)
+
+    // ── Pipeline funnel (always all-time — pipeline is a point-in-time snapshot) ─
     const pipeline = {
-      lead:      contacts.filter(c => c.stage === 'lead').length,
-      contacted: contacts.filter(c => c.stage === 'contacted').length,
-      qualified: contacts.filter(c => c.stage === 'qualified').length,
-      customer:  contacts.filter(c => c.stage === 'customer').length,
-      lost:      contacts.filter(c => c.stage === 'lost').length,
+      lead:      allContacts.filter(c => c.stage === 'lead').length,
+      contacted: allContacts.filter(c => c.stage === 'contacted').length,
+      qualified: allContacts.filter(c => c.stage === 'qualified').length,
+      customer:  allContacts.filter(c => c.stage === 'customer').length,
+      lost:      allContacts.filter(c => c.stage === 'lost').length,
     }
     const pipelineMax = Math.max(...Object.values(pipeline), 1)
     const pipelineFunnel = Object.entries(pipeline).map(([stage, count]) => ({
@@ -63,10 +94,10 @@ export function registerReports(app: Hono): void {
     }))
 
     // ── Revenue by month ──────────────────────────────────────────────────────
-    const paidInvoices = invoices.filter(i => i.status === 'paid' && i.paid_at)
+    const paidWithDate = invoices.filter(i => i.status === 'paid' && i.paid_at)
     const revenueByMonth = months.map(mk => ({
       month: labelMonth(mk),
-      amount: paidInvoices
+      amount: paidWithDate
         .filter(i => i.paid_at && monthKey(i.paid_at) === mk)
         .reduce((s, i) => s + i.total, 0),
     }))
@@ -79,7 +110,7 @@ export function registerReports(app: Hono): void {
     }))
 
     // ── Campaign summary ──────────────────────────────────────────────────────
-    const sentCampaigns = campaigns.filter(c => c.status === 'sent').slice(0, 5)
+    const sentCampaigns = allCampaigns.filter(c => c.status === 'sent').slice(0, 5)
     const campaignStats = sentCampaigns.map(cp => ({
       name: cp.name,
       recipients: cp.stats?.recipients ?? 0,
@@ -88,17 +119,45 @@ export function registerReports(app: Hono): void {
       rate: cp.stats?.recipients ? Math.round(((cp.stats?.sent ?? 0) / cp.stats.recipients) * 100) : 0,
     }))
 
-    // ── Totals ────────────────────────────────────────────────────────────────
+    // ── Totals (period-scoped where meaningful, all-time for pipeline snapshot) ─
+    const paidInPeriod = invoices.filter(i => i.status === 'paid')
     const totals = {
-      contacts: contacts.length,
+      contacts: allContacts.length,
       customers: pipeline.customer,
-      revenue_paid: Math.round(invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0) * 100) / 100,
-      revenue_outstanding: Math.round(invoices.filter(i => i.status === 'sent').reduce((s, i) => s + i.total, 0) * 100) / 100,
+      revenue_paid: Math.round(paidInPeriod.reduce((s, i) => s + i.total, 0) * 100) / 100,
+      revenue_outstanding: Math.round(allInvoices.filter(i => i.status === 'sent').reduce((s, i) => s + i.total, 0) * 100) / 100,
       appointments_completed: appts.filter(a => a.status === 'completed').length,
       campaigns_sent: campaigns.filter(c => c.status === 'sent').length,
       posts_published: posts.filter(p => p.status === 'published').length,
-      conversion_rate: contacts.length > 0 ? Math.round((pipeline.customer / contacts.length) * 100) : 0,
+      conversion_rate: allContacts.length > 0 ? Math.round((pipeline.customer / allContacts.length) * 100) : 0,
     }
+
+    // ── Conversations by channel ──────────────────────────────────────────────
+    const channelCounts: Record<string, number> = {}
+    for (const cv of convs) {
+      channelCounts[cv.channel] = (channelCounts[cv.channel] ?? 0) + 1
+    }
+    const convsByChannel = Object.entries(channelCounts)
+      .map(([channel, count]) => ({ channel, count }))
+      .sort((a, b) => b.count - a.count)
+
+    // ── Conversations by month ────────────────────────────────────────────────
+    const convsByMonth = months.map(mk => ({
+      month: labelMonth(mk),
+      count: convs.filter(cv => {
+        const at = (cv as { created_at?: string }).created_at ?? ''
+        return at && monthKey(at) === mk
+      }).length,
+    }))
+
+    // ── Automation run stats ──────────────────────────────────────────────────
+    const nowMs = Date.now()
+    const week = 7 * 24 * 60 * 60 * 1000
+    const runsThisWeek = allRuns.filter(r => Date.parse(r.ran_at) > nowMs - week).length
+    const runSuccessRate = runs.length > 0
+      ? Math.round((runs.filter(r => r.status === 'success').length / runs.length) * 100)
+      : 100
+    const automationStats = { total: allRuns.length, thisWeek: runsThisWeek, successRate: runSuccessRate }
 
     return c.json({
       totals,
@@ -108,6 +167,9 @@ export function registerReports(app: Hono): void {
       revenueMax,
       apptsByMonth,
       campaignStats,
+      convsByChannel,
+      convsByMonth,
+      automationStats,
     })
   })
 }

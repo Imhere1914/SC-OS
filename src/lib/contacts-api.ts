@@ -18,6 +18,7 @@ export type Contact = {
   owner: string | null
   unverified: boolean
   last_contacted_at: string | null
+  custom_fields: Record<string, string>
   created_at: string
   updated_at: string
 }
@@ -32,6 +33,7 @@ export type CreateContactInput = {
   tags?: string[]
   notes?: string
   owner?: string | null
+  custom_fields?: Record<string, string>
 }
 export type UpdateContactInput = Partial<CreateContactInput>
 
@@ -80,4 +82,26 @@ export async function updateContact(id: string, updates: UpdateContactInput): Pr
 export async function deleteContact(id: string): Promise<void> {
   const res = await fetch(`${API}/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`Failed to delete contact (${res.status})`)
+}
+
+export async function mergeContacts(keepId: string, deleteId: string): Promise<Contact> {
+  const res = await fetch(`${API}/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepId, deleteId }),
+  })
+  if (!res.ok) {
+    const e = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(e.error || `Merge failed (${res.status})`)
+  }
+  return ((await res.json()) as { contact: Contact }).contact
+}
+
+export async function bulkContacts(action: 'delete' | 'stage' | 'tag', ids: string[], payload?: { stage?: ContactStage; tag?: string }): Promise<void> {
+  const res = await fetch(`${API}/bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ids, ...payload }),
+  })
+  if (!res.ok) throw new Error(`Bulk action failed (${res.status})`)
 }

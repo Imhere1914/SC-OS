@@ -1,16 +1,71 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Add01Icon, Delete01Icon, FlowSquareIcon, PencilEdit02Icon, PlayIcon } from '@hugeicons/core-free-icons'
+import { Add01Icon, ArrowDown01Icon, Cancel01Icon, Clock01Icon, Delete01Icon, FlowSquareIcon, PencilEdit02Icon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { ScreenShell } from '@/components/screen-shell'
 import { toast } from '@/components/toast'
+import { cn } from '@/lib/utils'
 import {
   ACTION_EMOJIS, ACTION_LABELS, ACTION_TYPES, CONDITION_OPERATORS, OPERATOR_LABELS,
   TRIGGER_EMOJIS, TRIGGER_EVENTS, TRIGGER_LABELS,
-  createAutomation, deleteAutomation, fetchAutomations, updateAutomation,
-  type ActionConfig, type AutomationInput, type AutomationRecord, type Condition,
+  createAutomation, deleteAutomation, fetchAutomations, fetchRuns, updateAutomation,
+  type ActionConfig, type AutomationInput, type AutomationRecord, type AutomationRun, type Condition,
   type ConditionOperator, type TriggerEvent, type ActionType,
 } from '@/lib/automations-api'
+import { AUTOMATION_RECIPES, RECIPE_CATEGORIES, SUGGESTED_AUTOMATIONS, type AutomationRecipe } from '@/lib/automation-recipes'
+
+// ─── Design tokens (shared vocabulary with Payments / Payroll) ──────────────
+
+const ACCENT_GRADIENT = 'linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 65%, #000))'
+const ACCENT_GLOW = '0 2px 8px color-mix(in srgb, var(--theme-accent) 38%, transparent)'
+
+const RUN_STATUS_COLORS: Record<string, string> = {
+  success: '#10b981',
+  partial: '#f59e0b',
+  failed: '#ef4444',
+}
+
+function timeAgo(d: string): string {
+  try {
+    const diff = Date.now() - new Date(d).getTime()
+    if (Number.isNaN(diff)) return d
+    const sec = Math.floor(diff / 1000)
+    if (sec < 60) return 'just now'
+    const min = Math.floor(sec / 60)
+    if (min < 60) return `${min}m ago`
+    const hr = Math.floor(min / 60)
+    if (hr < 24) return `${hr}h ago`
+    const day = Math.floor(hr / 24)
+    if (day < 30) return `${day}d ago`
+    const mo = Math.floor(day / 30)
+    if (mo < 12) return `${mo}mo ago`
+    return `${Math.floor(mo / 12)}y ago`
+  } catch { return d }
+}
+
+// Modern pill switch (pure CSS)
+function PillSwitch({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      title={label}
+      onClick={onToggle}
+      className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-150"
+      style={{
+        background: checked ? ACCENT_GRADIENT : 'var(--theme-border)',
+        boxShadow: checked ? ACCENT_GLOW : undefined,
+      }}
+    >
+      <span
+        className="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-150"
+        style={{ transform: checked ? 'translateX(18px)' : 'translateX(2px)' }}
+      />
+    </button>
+  )
+}
 
 // ─── Action editor component ────────────────────────────────────────────────
 
@@ -107,15 +162,23 @@ function BuilderModal({ initial, onSave, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-10">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-2xl rounded-2xl border shadow-2xl" style={{ background: 'var(--theme-card-solid)', borderColor: 'var(--theme-border)' }}>
 
-        {/* Header */}
-        <div className="border-b px-6 py-4" style={{ borderColor: 'var(--theme-border)' }}>
-          <h2 className="text-[15px] font-semibold text-[var(--theme-text)]">
-            {initial ? 'Edit automation' : 'New automation'}
-          </h2>
-          <p className="mt-0.5 text-[12px] text-[var(--theme-muted)]">When a trigger fires → check conditions → run actions</p>
+        {/* Header — gradient icon chip + bold title + muted subtitle */}
+        <div className="flex items-center gap-3 border-b px-6 py-4" style={{ borderColor: 'var(--theme-border)' }}>
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
+          >
+            <HugeiconsIcon icon={FlowSquareIcon} size={16} className="text-white" />
+          </span>
+          <div>
+            <h2 className="text-[15px] font-semibold text-[var(--theme-text)]">
+              {initial ? 'Edit automation' : 'New automation'}
+            </h2>
+            <p className="mt-0.5 truncate text-[12px] text-[var(--theme-muted)]">When a trigger fires → check conditions → run actions</p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-5 p-6">
@@ -233,7 +296,8 @@ function BuilderModal({ initial, onSave, onClose }: {
               if (actions.length === 0) { toast('Add at least one action', { type: 'error' }); return }
               onSave({ name, description, trigger, conditions, actions })
             }}
-            className="btn-primary rounded-xl px-4 py-2 text-[13px] font-medium text-white"
+            className="rounded-xl px-4 py-2 text-[13px] font-semibold text-white transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+            style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
           >
             {initial ? 'Save changes' : 'Create automation'}
           </button>
@@ -245,9 +309,62 @@ function BuilderModal({ initial, onSave, onClose }: {
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
+// ─── Recipe card ────────────────────────────────────────────────────────────
+
+function RecipeCard({ recipe, onImport, imported, importing }: {
+  recipe: AutomationRecipe
+  onImport: (r: AutomationRecipe) => void
+  imported: boolean
+  importing: boolean
+}) {
+  return (
+    <div
+      className="flex items-start gap-3 rounded-2xl border p-4 transition-all duration-150 hover:-translate-y-1 hover:shadow-md"
+      style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)', backdropFilter: 'blur(10px)' }}
+    >
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[20px]"
+        style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
+      >
+        {recipe.emoji}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-[var(--theme-text)]">{recipe.name}</p>
+        <p className="mt-0.5 text-[11px] text-[var(--theme-muted)]">{recipe.description}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: 'var(--theme-accent-soft)', color: 'var(--theme-accent)' }}>
+            {TRIGGER_EMOJIS[recipe.trigger]} {TRIGGER_LABELS[recipe.trigger]}
+          </span>
+          <span className="text-[10px] tabular-nums text-[var(--theme-muted)]">→ {recipe.actions.length} action{recipe.actions.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      <button
+        onClick={() => !imported && !importing && onImport(recipe)}
+        disabled={imported || importing}
+        className={cn(
+          'flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150',
+          imported
+            ? 'text-[var(--theme-success)]'
+            : 'text-white hover:-translate-y-px hover:shadow-md',
+        )}
+        style={imported
+          ? { background: 'color-mix(in srgb, var(--theme-success) 10%, transparent)' }
+          : { background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
+      >
+        <HugeiconsIcon icon={imported ? Tick02Icon : ArrowDown01Icon} size={11} />
+        {importing ? 'Adding…' : imported ? 'Added' : 'Use'}
+      </button>
+    </div>
+  )
+}
+
 export function AutomationsScreen() {
   const qc = useQueryClient()
+  const [topTab, setTopTab] = useState<'automations' | 'recipes'>('automations')
   const [modal, setModal] = useState<'create' | AutomationRecord | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [importingIds, setImportingIds] = useState<Set<string>>(new Set())
+  const [importedIds, setImportedIds] = useState<Set<string>>(new Set())
 
   const { data: automations = [], isLoading } = useQuery({
     queryKey: ['automations'],
@@ -271,8 +388,32 @@ export function AutomationsScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['automations'] }),
   })
 
+  const importRecipe = (recipe: AutomationRecipe) => {
+    if (importingIds.has(recipe.id) || importedIds.has(recipe.id)) return
+    setImportingIds(prev => new Set([...prev, recipe.id]))
+    const { id: _id, emoji: _e, category: _c, description: _d, ...input } = recipe
+    create.mutate(input as AutomationInput, {
+      onSuccess: () => {
+        setImportingIds(prev => { const s = new Set(prev); s.delete(recipe.id); return s })
+        setImportedIds(prev => new Set([...prev, recipe.id]))
+        toast(`"${recipe.name}" added to your automations`)
+        setTopTab('automations')
+      },
+      onError: () => {
+        setImportingIds(prev => { const s = new Set(prev); s.delete(recipe.id); return s })
+      },
+    })
+  }
+
   const enabled = automations.filter(a => a.enabled)
   const disabled = automations.filter(a => !a.enabled)
+
+  const runsQuery = useQuery({
+    queryKey: ['automation-runs'],
+    queryFn: () => fetchRuns(),
+    enabled: showHistory,
+    staleTime: 30_000,
+  })
 
   return (
     <>
@@ -282,24 +423,115 @@ export function AutomationsScreen() {
         count={automations.length}
         subtitle="IF trigger → check conditions → run actions"
         action={
-          <button onClick={() => setModal('create')} className="btn-primary flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-medium text-white">
-            <HugeiconsIcon icon={Add01Icon} size={15} />
-            New automation
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Tab switcher */}
+            <div className="flex items-center gap-0.5 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-input)] p-0.5">
+              {(['automations', 'recipes'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setTopTab(tab)}
+                  className={cn(
+                    'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    topTab === tab ? 'text-white' : 'text-[var(--theme-muted)] hover:text-[var(--theme-text)]',
+                  )}
+                  style={topTab === tab ? { background: 'var(--theme-accent)' } : undefined}
+                >
+                  {tab === 'automations' ? 'My Automations' : '⚡ Recipes'}
+                </button>
+              ))}
+            </div>
+            {topTab === 'automations' && (
+              <>
+                <button
+                  onClick={() => setShowHistory(h => !h)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-medium transition-colors',
+                    showHistory
+                      ? 'text-white'
+                      : 'border border-[var(--theme-border)] text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]',
+                  )}
+                  style={showHistory ? { background: 'var(--theme-accent)' } : undefined}
+                >
+                  <HugeiconsIcon icon={Clock01Icon} size={14} />
+                  History
+                </button>
+                <button onClick={() => setModal('create')} className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-semibold text-white transition-all duration-150 hover:-translate-y-px hover:shadow-md" style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}>
+                  <HugeiconsIcon icon={Add01Icon} size={15} />
+                  New
+                </button>
+              </>
+            )}
+          </div>
         }
       >
-        {isLoading ? (
+        {/* ── Recipes tab ── */}
+        {topTab === 'recipes' && (
+          <div className="flex flex-col gap-6">
+            {/* Suggested Automations */}
+            <section>
+              <h2 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--theme-muted)] opacity-70">
+                <span>⚡</span>
+                Suggested for You
+              </h2>
+              <div className="mb-1 rounded-xl border px-4 py-2.5 text-[11px] text-[var(--theme-muted)]" style={{ background: 'var(--theme-accent-soft)', borderColor: 'var(--theme-border)' }}>
+                These four automations cover the most common cross-module workflows. Enable them with one click.
+              </div>
+              <div className="mt-2 flex flex-col gap-2">
+                {SUGGESTED_AUTOMATIONS.map(recipe => (
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    imported={importedIds.has(recipe.id)}
+                    importing={importingIds.has(recipe.id)}
+                    onImport={importRecipe}
+                  />
+                ))}
+              </div>
+            </section>
+            {(Object.entries(RECIPE_CATEGORIES) as [AutomationRecipe['category'], { label: string; emoji: string }][]).map(([cat, meta]) => {
+              const recipes = AUTOMATION_RECIPES.filter(r => r.category === cat)
+              return (
+                <section key={cat}>
+                  <h2 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[var(--theme-muted)] opacity-70">
+                    <span>{meta.emoji}</span>
+                    {meta.label}
+                  </h2>
+                  <div className="flex flex-col gap-2">
+                    {recipes.map(recipe => (
+                      <RecipeCard
+                        key={recipe.id}
+                        recipe={recipe}
+                        imported={importedIds.has(recipe.id)}
+                        importing={importingIds.has(recipe.id)}
+                        onImport={importRecipe}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── My Automations tab ── */}
+        {topTab === 'automations' && isLoading ? (
           <p className="py-12 text-center text-[13px] text-[var(--theme-muted)]">Loading…</p>
-        ) : automations.length === 0 ? (
+        ) : topTab === 'automations' && automations.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-20 text-center" style={{ borderColor: 'var(--theme-border)' }}>
             <p className="text-[36px]">⚡</p>
             <p className="mt-2 text-[14px] font-medium text-[var(--theme-text)]">No automations yet</p>
-            <p className="mt-1 text-[13px] text-[var(--theme-muted)]">Create your first rule to start automating your business workflows.</p>
-            <button onClick={() => setModal('create')} className="mt-4 text-[13px] font-medium" style={{ color: 'var(--theme-accent)' }}>
-              Create first automation →
-            </button>
+            <p className="mt-1 text-[13px] text-[var(--theme-muted)]">Create your first rule or import a recipe to get started.</p>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button onClick={() => setModal('create')} className="text-[13px] font-medium" style={{ color: 'var(--theme-accent)' }}>
+                Build from scratch →
+              </button>
+              <span className="text-[var(--theme-muted)]">or</span>
+              <button onClick={() => setTopTab('recipes')} className="text-[13px] font-medium" style={{ color: 'var(--theme-accent)' }}>
+                Browse recipes →
+              </button>
+            </div>
           </div>
-        ) : (
+        ) : topTab === 'automations' ? (
           <div className="flex flex-col gap-5">
             {[{ label: 'Active', items: enabled }, { label: 'Paused', items: disabled }]
               .filter(g => g.items.length > 0)
@@ -310,13 +542,15 @@ export function AutomationsScreen() {
                     {group.items.map(auto => (
                       <div
                         key={auto.id}
-                        className="group flex items-start gap-4 rounded-2xl border p-4 transition-all hover:shadow-sm"
+                        className="group flex items-start gap-4 rounded-2xl border p-4 transition-all duration-150 hover:-translate-y-px hover:shadow-md"
                         style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)', backdropFilter: 'blur(12px)' }}
                       >
                         {/* Trigger badge */}
                         <div
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[18px]"
-                          style={{ background: auto.enabled ? 'var(--theme-accent-soft)' : 'var(--theme-hover)' }}
+                          style={auto.enabled
+                            ? { background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }
+                            : { background: 'var(--theme-hover)' }}
                         >
                           {TRIGGER_EMOJIS[auto.trigger]}
                         </div>
@@ -326,22 +560,38 @@ export function AutomationsScreen() {
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-semibold text-[var(--theme-text)]">{auto.name}</span>
                             {auto.run_count > 0 && (
-                              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium text-[var(--theme-muted)]" style={{ background: 'var(--theme-hover)' }}>
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                                style={{
+                                  background: 'color-mix(in srgb, #3b82f6 12%, var(--theme-card))',
+                                  color: '#3b82f6',
+                                  border: '1px solid color-mix(in srgb, #3b82f6 25%, transparent)',
+                                }}
+                              >
                                 {auto.run_count} runs
                               </span>
                             )}
                           </div>
                           {auto.description && (
-                            <p className="mt-0.5 text-[12px] text-[var(--theme-muted)]">{auto.description}</p>
+                            <p className="mt-0.5 truncate text-[12px] text-[var(--theme-muted)]">{auto.description}</p>
                           )}
+                          {/* Trigger → action visual chain */}
                           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--theme-muted)]">
                             <span className="rounded-full px-2 py-0.5 font-medium" style={{ background: 'var(--theme-accent-soft)', color: 'var(--theme-accent)' }}>
                               {TRIGGER_EMOJIS[auto.trigger]} {TRIGGER_LABELS[auto.trigger]}
                             </span>
-                            {auto.conditions.length > 0 && <span>· {auto.conditions.length} condition{auto.conditions.length > 1 ? 's' : ''}</span>}
+                            {auto.conditions.length > 0 && <span className="tabular-nums">· {auto.conditions.length} condition{auto.conditions.length > 1 ? 's' : ''}</span>}
                             <span>→</span>
                             {auto.actions.map((a, i) => (
-                              <span key={i} className="rounded-full border px-2 py-0.5" style={{ borderColor: 'var(--theme-border)' }}>
+                              <span
+                                key={i}
+                                className="rounded-full px-2 py-0.5 font-medium"
+                                style={{
+                                  background: 'color-mix(in srgb, #8b5cf6 10%, var(--theme-card))',
+                                  color: '#8b5cf6',
+                                  border: '1px solid color-mix(in srgb, #8b5cf6 25%, transparent)',
+                                }}
+                              >
                                 {ACTION_EMOJIS[a.type]} {ACTION_LABELS[a.type]}
                               </span>
                             ))}
@@ -349,29 +599,32 @@ export function AutomationsScreen() {
                         </div>
 
                         {/* Controls */}
-                        <div className="flex shrink-0 items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          {/* Enable/disable toggle */}
-                          <button
-                            onClick={() => update.mutate({ id: auto.id, patch: { enabled: !auto.enabled } })}
-                            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-                            title={auto.enabled ? 'Pause' : 'Enable'}
-                            style={{ color: auto.enabled ? 'var(--theme-success)' : 'var(--theme-muted)' }}
-                          >
-                            <HugeiconsIcon icon={PlayIcon} size={15} />
-                          </button>
-                          <button
-                            onClick={() => setModal(auto)}
-                            className="rounded-lg p-1.5 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-hover)] hover:text-[var(--theme-text)]"
-                          >
-                            <HugeiconsIcon icon={PencilEdit02Icon} size={15} />
-                          </button>
-                          <button
-                            onClick={() => remove.mutate(auto.id)}
-                            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-                            style={{ color: 'var(--theme-danger)' }}
-                          >
-                            <HugeiconsIcon icon={Delete01Icon} size={15} />
-                          </button>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {/* Enable/disable pill switch */}
+                          <PillSwitch
+                            checked={auto.enabled}
+                            onToggle={() => update.mutate({ id: auto.id, patch: { enabled: !auto.enabled } })}
+                            label={auto.enabled ? 'Pause' : 'Enable'}
+                          />
+                          <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                            <button
+                              onClick={() => setModal(auto)}
+                              className="rounded-lg p-1.5 text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-hover)] hover:text-[var(--theme-text)]"
+                            >
+                              <HugeiconsIcon icon={PencilEdit02Icon} size={15} />
+                            </button>
+                            <button
+                              onClick={() => remove.mutate(auto.id)}
+                              className="rounded-lg p-1.5 transition-all duration-150"
+                              style={{
+                                color: '#ef4444',
+                                background: 'color-mix(in srgb, #ef4444 8%, transparent)',
+                                border: '1px solid color-mix(in srgb, #ef4444 25%, transparent)',
+                              }}
+                            >
+                              <HugeiconsIcon icon={Delete01Icon} size={15} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -379,6 +632,56 @@ export function AutomationsScreen() {
                 </section>
               ))}
           </div>
+        ) : null}
+        {/* ── Run history panel ── */}
+        {showHistory && (
+          <section className="mt-2">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--theme-muted)] opacity-70">
+                Run History
+              </h2>
+              <button onClick={() => setShowHistory(false)} className="rounded-lg p-1 hover:bg-[var(--theme-hover)]">
+                <HugeiconsIcon icon={Cancel01Icon} size={12} className="text-[var(--theme-muted)]" />
+              </button>
+            </div>
+            {runsQuery.isLoading ? (
+              <p className="py-6 text-center text-xs text-[var(--theme-muted)]">Loading runs…</p>
+            ) : (runsQuery.data ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[var(--theme-border)] py-8 text-center">
+                <p className="text-sm text-[var(--theme-muted)]">No runs yet — trigger an automation to see history here.</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] divide-y divide-[var(--theme-border)]" style={{ backdropFilter: 'blur(10px)' }}>
+                {(runsQuery.data ?? []).map((run: AutomationRun) => {
+                  const statusColor = RUN_STATUS_COLORS[run.status] ?? '#94a3b8'
+                  return (
+                    <div key={run.id} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--theme-hover)]">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: statusColor, boxShadow: `0 0 6px color-mix(in srgb, ${statusColor} 60%, transparent)` }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] font-medium text-[var(--theme-text)]">{run.automation_name}</p>
+                        <p className="truncate text-[10px] text-[var(--theme-muted)]">{run.context_summary}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-[10px] font-medium tabular-nums" style={{ color: statusColor }}>
+                          {run.actions_run} action{run.actions_run !== 1 ? 's' : ''}
+                          {run.actions_failed > 0 && ` · ${run.actions_failed} failed`}
+                        </p>
+                        <p className="text-[10px] text-[var(--theme-muted)]" title={new Date(run.ran_at).toLocaleString()}>
+                          {timeAgo(run.ran_at)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-[var(--theme-border)] px-1.5 py-0.5 text-[9px] uppercase text-[var(--theme-muted)]">
+                        {TRIGGER_EMOJIS[run.trigger]} {run.trigger.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
         )}
       </ScreenShell>
 

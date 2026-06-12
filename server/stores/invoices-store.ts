@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join } from 'path'
 
 const DATA_DIR = process.env.AIOS_DATA_DIR ?? join(process.env.HOME ?? '/tmp', '.ai-os')
@@ -16,7 +16,6 @@ function readJson<T>(file: string, fallback: T): T {
 
 function writeJson(file: string, data: unknown) {
   writeFileSync(dbPath(file) + '.tmp', JSON.stringify(data, null, 2))
-  const { renameSync } = require('fs') as typeof import('fs')
   renameSync(dbPath(file) + '.tmp', dbPath(file))
 }
 
@@ -75,6 +74,11 @@ function nextInvoiceNumber(invoices: InvoiceRecord[]): string {
 
 export function listInvoices(brand?: string): InvoiceRecord[] {
   return readJson<InvoiceRecord[]>(file(brand), [])
+}
+
+export function getInvoice(id: string, brand?: string): InvoiceRecord | null {
+  const all = brand ? listInvoices(brand) : [...listInvoices('sc'), ...listInvoices('hfm'), ...listInvoices(undefined)]
+  return all.find(i => i.id === id) ?? null
 }
 
 export interface CreateInvoiceInput {
@@ -139,3 +143,113 @@ export function deleteInvoice(id: string, brand?: string): boolean {
   writeJson(file(brand), next)
   return true
 }
+
+// ── Recurring Invoices ────────────────────────────────────────────────────────
+
+export type RecurrenceFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+
+export interface RecurringInvoiceRecord {
+  id: string
+  brand?: string
+  contact_id?: string
+  contact_name: string
+  contact_email?: string
+  line_items: LineItem[]
+  tax_rate: number
+  notes?: string
+  frequency: RecurrenceFrequency
+  next_invoice_at: string   // ISO date — when to next auto-create
+  last_invoiced_at?: string
+  status: 'active' | 'paused'
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateRecurringInvoiceInput {
+  brand?: string
+  contact_id?: string
+  contact_name: string
+  contact_email?: string
+  line_items: Omit<LineItem, 'id'>[]
+  tax_rate?: number
+  notes?: string
+  frequency: RecurrenceFrequency
+  next_invoice_at?: string  // defaults to now + 1 interval
+}
+
+const FREQUENCY_DAYS: Record<RecurrenceFrequency, number> = {
+  weekly: 7,
+  monthly: 30,
+  quarterly: 90,
+  yearly: 365,
+}
+
+function addFrequencyInterval(from: string, frequency: RecurrenceFrequency): string {
+  const d = new Date(from)
+  d.setDate(d.getDate() + FREQUENCY_DAYS[frequency])
+  return d.toISOString()
+}
+
+function recurringFile(brand?: string) {
+  return brand ? `recurring-invoices-${brand}.json` : 'recurring-invoices.json'
+}
+
+export function listRecurringInvoices(brand?: string): RecurringInvoiceRecord[] {
+  return readJson<RecurringInvoiceRecord[]>(recurringFile(brand), [])
+}
+
+export function getRecurringInvoice(id: string, brand?: string): RecurringInvoiceRecord | null {
+  const all = listRecurringInvoices(brand)
+  return all.find(r => r.id === id) ?? null
+}
+
+export function createRecurringInvoice(data: CreateRecurringInvoiceInput): RecurringInvoiceRecord {
+  const records = listRecurringInvoices(data.brand)
+  const now = new Date().toISOString()
+  const items: LineItem[] = data.line_items.map(li => ({ ...li, id: crypto.randomUUID() }))
+  const record: RecurringInvoiceRecord = {
+    id: crypto.randomUUID(),
+    brand: data.brand,
+    contact_id: data.contact_id,
+    contact_name: data.contact_name,
+    contact_email: data.contact_email,
+    line_items: items,
+    tax_rate: data.tax_rate ?? 0,
+    notes: data.notes,
+    frequency: data.frequency,
+    next_invoice_at: data.next_invoice_at ?? addFrequencyInterval(now, data.frequency),
+    status: 'active',
+    created_at: now,
+    updated_at: now,
+  }
+  writeJson(recurringFile(data.brand), [record, ...records])
+  return record
+}
+
+export function updateRecurringInvoice(
+  id: string,
+  updates: Partial<Omit<RecurringInvoiceRecord, 'id' | 'created_at'>>,
+  brand?: string,
+): RecurringInvoiceRecord | null {
+  const records = listRecurringInvoices(brand)
+  const idx = records.findIndex(r => r.id === id)
+  if (idx === -1) return null
+  const updated: RecurringInvoiceRecord = {
+    ...records[idx],
+    ...updates,
+    updated_at: new Date().toISOString(),
+  }
+  records[idx] = updated
+  writeJson(recurringFile(brand), records)
+  return updated
+}
+
+export function deleteRecurringInvoice(id: string, brand?: string): boolean {
+  const records = listRecurringInvoices(brand)
+  const next = records.filter(r => r.id !== id)
+  if (next.length === records.length) return false
+  writeJson(recurringFile(brand), next)
+  return true
+}
+
+export { addFrequencyInterval }

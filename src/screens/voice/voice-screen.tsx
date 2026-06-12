@@ -188,15 +188,17 @@ export function VoiceScreen() {
   })
   const [messages, setMessages] = useState<Message[]>([])
   const [_transcript, setTranscript] = useState('')
-  const [statusText, setStatusText] = useState('Hold to speak')
+  const [statusText, setStatusText] = useState('Tap to speak')
   const [muted, setMuted] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isHolding = useRef(false)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const rafRef = useRef<number | null>(null)
   const transcriptRef = useRef<HTMLDivElement>(null)
 
   // Load stored preference from server
@@ -266,12 +268,12 @@ export function VoiceScreen() {
       audio.onended = () => {
         URL.revokeObjectURL(url)
         setVoiceState('idle')
-        setStatusText('Hold to speak')
+        setStatusText('Tap to speak')
         audioRef.current = null
       }
       audio.onerror = () => {
         setVoiceState('idle')
-        setStatusText('Hold to speak')
+        setStatusText('Tap to speak')
       }
       await audio.play()
     } catch {
@@ -285,18 +287,27 @@ export function VoiceScreen() {
         )
         if (preferred) utt.voice = preferred
         utt.rate = 1.05
-        utt.onend = () => { setVoiceState('idle'); setStatusText('Hold to speak') }
+        utt.onend = () => { setVoiceState('idle'); setStatusText('Tap to speak') }
         window.speechSynthesis.speak(utt)
       } else {
         setVoiceState('idle')
-        setStatusText('Hold to speak')
+        setStatusText('Tap to speak')
       }
     }
   }, [muted, selectedId])
 
+  function clearSilenceTracking() {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+    analyserRef.current = null
+    audioCtxRef.current?.close().catch(() => {})
+    audioCtxRef.current = null
+  }
+
   async function startListening() {
     if (voiceState === 'thinking' || voiceState === 'listening') return
     stopAudio()
+    clearSilenceTracking()
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mr = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
@@ -305,8 +316,37 @@ export function VoiceScreen() {
       mr.start(100)
       mediaRecorderRef.current = mr
       setVoiceState('listening')
-      setStatusText('Listening…')
+      setStatusText('Listening… (auto-sends after 5s silence)')
       setTranscript('')
+
+      // Silence detection via WebAudio AnalyserNode
+      const audioCtx = new AudioContext()
+      audioCtxRef.current = audioCtx
+      const source = audioCtx.createMediaStreamSource(stream)
+      const analyser = audioCtx.createAnalyser()
+      analyser.fftSize = 256
+      source.connect(analyser)
+      analyserRef.current = analyser
+      const data = new Uint8Array(analyser.frequencyBinCount)
+      let silenceStart: number | null = null
+
+      function checkSilence() {
+        if (!analyserRef.current) return
+        analyserRef.current.getByteFrequencyData(data)
+        const avg = data.reduce((a, b) => a + b, 0) / data.length
+        if (avg < 6) {
+          if (silenceStart === null) silenceStart = Date.now()
+          else if (Date.now() - silenceStart >= 5000) {
+            clearSilenceTracking()
+            void stopListening()
+            return
+          }
+        } else {
+          silenceStart = null
+        }
+        rafRef.current = requestAnimationFrame(checkSilence)
+      }
+      rafRef.current = requestAnimationFrame(checkSilence)
     } catch {
       toast('Microphone access denied', { type: 'error' })
     }
@@ -328,7 +368,7 @@ export function VoiceScreen() {
 
     if (audioBlob.size < 500) {
       setVoiceState('idle')
-      setStatusText('Hold to speak')
+      setStatusText('Tap to speak')
       return
     }
 
@@ -341,7 +381,7 @@ export function VoiceScreen() {
       const userText = txData.text?.trim()
       if (!userText) {
         setVoiceState('idle')
-        setStatusText('Hold to speak')
+        setStatusText('Tap to speak')
         return
       }
       setTranscript(userText)
@@ -359,7 +399,7 @@ export function VoiceScreen() {
       const reply = chatData.reply?.trim()
       if (!reply) {
         setVoiceState('idle')
-        setStatusText('Hold to speak')
+        setStatusText('Tap to speak')
         return
       }
 
@@ -368,24 +408,23 @@ export function VoiceScreen() {
     } catch (e) {
       toast((e as Error).message, { type: 'error' })
       setVoiceState('idle')
-      setStatusText('Hold to speak')
+      setStatusText('Tap to speak')
     }
   }
 
-  // Pointer/touch handlers
-  function onHoldStart(e: React.MouseEvent | React.TouchEvent) {
+  // Single-tap toggle
+  function onMicTap(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault()
-    isHolding.current = true
-    holdTimerRef.current = setTimeout(() => {
-      if (isHolding.current) startListening()
-    }, 80)
-  }
-
-  function onHoldEnd(e: React.MouseEvent | React.TouchEvent) {
-    e.preventDefault()
-    isHolding.current = false
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current)
-    if (voiceState === 'listening') stopListening()
+    if (voiceState === 'idle') {
+      void startListening()
+    } else if (voiceState === 'listening') {
+      clearSilenceTracking()
+      void stopListening()
+    } else if (voiceState === 'speaking') {
+      stopAudio()
+      setVoiceState('idle')
+      setStatusText('Tap to speak')
+    }
   }
 
   const statusColor = {
@@ -574,11 +613,7 @@ export function VoiceScreen() {
           )}
 
           <button
-            onMouseDown={onHoldStart}
-            onMouseUp={onHoldEnd}
-            onMouseLeave={onHoldEnd}
-            onTouchStart={onHoldStart}
-            onTouchEnd={onHoldEnd}
+            onClick={onMicTap}
             disabled={voiceState === 'thinking'}
             className="relative flex h-20 w-20 items-center justify-center rounded-full transition-all select-none"
             style={{
@@ -616,12 +651,12 @@ export function VoiceScreen() {
 
           <p className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>
             {voiceState === 'listening'
-              ? 'Release to send'
+              ? 'Auto-sends after 5s silence · tap to send now'
               : voiceState === 'thinking'
                 ? 'Processing…'
                 : voiceState === 'speaking'
-                  ? 'Tap mic to interrupt'
-                  : 'Hold to speak'}
+                  ? 'Tap to interrupt'
+                  : 'Tap to speak'}
           </p>
         </div>
       </div>

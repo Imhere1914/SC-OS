@@ -70,7 +70,7 @@ function InvoicePrint() {
         {/* Brand header strip */}
         <div
           className="px-8 py-6"
-          style={{ background: `linear-gradient(135deg, ${accentColor}, color-mix(in srgb, ${accentColor} 65%, #7b3fe4))` }}
+          style={{ background: `linear-gradient(135deg, ${accentColor}, color-mix(in srgb, ${accentColor} 65%, #000))` }}
         >
           <div className="flex items-start justify-between">
             <div>

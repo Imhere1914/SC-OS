@@ -6,14 +6,32 @@
  *  2. Hermes session-send bridge (HERMES_API_URL set, no OpenRouter key) — fire & poll
  *  3. Keyword fallback — offline canned responses
  *
- * SC default model: minimax/minimax-m3 (cheap, fast)
- * HFM default model: minimax/minimax-m3 (same)
- * Override via MODEL env var.
+ * Default model: openai/gpt-4o-mini (cheap, conversational, tool-capable)
+ * Override via CHAT_MODEL or MODEL env var.
  */
 import type { Hono } from 'hono'
 import { buildAssistantContext } from '../stores/knowledge-store'
+import { AI_TOOLS } from '../lib/ai-tools'
+import { executeToolCall, type ToolArgs } from '../lib/ai-actions'
+import { buildBusinessContext } from '../lib/business-context'
+import { getChatModel } from '../stores/preferences-store'
 
 interface ChatMessage { role: 'user' | 'assistant'; content: string }
+
+interface ToolCall {
+  id: string
+  function: { name: string; arguments: string }
+}
+
+interface OpenRouterMessage {
+  content: string | null
+  tool_calls?: ToolCall[]
+}
+
+interface OpenRouterResponse {
+  choices?: Array<{ message?: OpenRouterMessage }>
+  model?: string
+}
 
 // ── Brand helpers ─────────────────────────────────────────────────────────────
 
@@ -27,55 +45,64 @@ function brandName(): string {
 }
 
 function defaultModel(): string {
-  return process.env.MODEL ?? 'minimax/minimax-m3'
+  return getChatModel()
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(): string {
-  const b = brandId()
-  const name = brandName()
+function buildSystemPrompt(brand?: string): string {
+  const b = brand ?? brandId()
   const knowledgeCtx = buildAssistantContext(b)
+  const businessCtx = buildBusinessContext(b)
 
-  const hfmGuard = b === 'hfm'
-    ? '\n\nIMPORTANT: You are a business operations assistant. NEVER diagnose conditions, prescribe treatments, or give medical advice. Always direct clinical questions to the practitioner.'
-    : ''
+  // ── Brand persona ────────────────────────────────────────────────────────────
+  const persona = b === 'hfm'
+    ? `You are Hermes, the AI companion for Holistic Functional Care — a women's holistic and functional wellness practice. Your voice is warm, calm, and nurturing. You speak with care and encouragement ("let's gently…", "a lovely place to start is…"), never clinical or rushed. You honor the whole person and the practice's compassionate, holistic philosophy. You help the practitioner run the practice — appointments, patient communications, intake, content, campaigns — and support patients with kindness.
 
-  const base = `You are the ${name} AI assistant — a smart business operations co-pilot. You help users manage their pipeline, contacts, conversations, appointments, campaigns, social posts, projects, pages, templates, media, and automations through this AI Operating System.
+IMPORTANT BOUNDARY: You are a wellness-practice operations companion, NOT a medical provider. NEVER diagnose conditions, prescribe treatments, recommend specific supplements or dosages, or give individualized medical advice. Share only general wellness education, and always, warmly, direct any clinical or personal-health question back to the practitioner.`
+    : b === 'sc'
+    ? `You are Hermes, the AI operations partner for Simple Connect — an AI-powered virtual office manager for home-service businesses (HVAC, plumbing, contractors). Your voice is confident, friendly, and strategic. You're an upbeat, sharp teammate who gets things done — and you think like a growth advisor, framing things around pipeline, conversion, revenue, and outcomes. You're direct and practical, but personable. When you see an opportunity to move a deal forward or capture more revenue, you say so.`
+    : `You are Hermes, a smart, friendly business operations co-pilot.`
 
-Be concise, practical, and action-oriented. When asked about data, summarise what you know. When asked to do something, describe the steps clearly. You have awareness of the platform's modules: Dashboard, Assistant, Highlights, Knowledge Vault, Conversations, Contacts, Appointments, Social, Campaigns, Pages, Templates, Media Studio, Projects, Automations, Avatars, Plugins.${hfmGuard}`
+  const base = `${persona}
 
-  if (!knowledgeCtx) return base
+You help manage the business through this AI Operating System: pipeline, contacts, conversations, appointments, campaigns, social posts, projects, pages, templates, media, and automations. When asked about data, summarize what you know clearly. When asked to do something, take the action or describe the steps. You can generate images with AI (saved to the Media Studio gallery), start video renders that finish in Media Studio a few minutes later, and post to connected social channels. You're aware of the platform's modules: Dashboard, Assistant, Highlights, Knowledge Vault, Conversations, Contacts, Appointments, Social, Campaigns, Pages, Templates, Media Studio, Projects, Automations, Site Studio.
 
-  return `${base}
+## How to talk
+Sound like a real person, not a bot. Write the way a sharp, warm colleague texts — natural, flowing sentences, a little personality, contractions, the occasional aside. Vary your rhythm. React to what they actually said before diving in. Never robotic, never a wall of bullet points unless they ask for a list. Be genuinely helpful and concise, but human first. Don't over-explain or pad. If something's good news, sound a little pleased; if something needs attention, say so plainly and kindly.`
 
-## Business Knowledge
-${knowledgeCtx}`
+  const withKnowledge = knowledgeCtx ? `${base}\n\n## Business Knowledge\n${knowledgeCtx}` : base
+
+  return businessCtx ? `${withKnowledge}\n\n${businessCtx}` : withKnowledge
 }
 
 // ── OpenRouter direct call ────────────────────────────────────────────────────
 
-async function callOpenRouter(messages: ChatMessage[]): Promise<{ reply: string; live: boolean; model: string }> {
+async function callOpenRouter(messages: ChatMessage[], brand: string): Promise<{ reply: string; live: boolean; model: string }> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) throw new Error('no key')
 
   const model = defaultModel()
-  const systemPrompt = buildSystemPrompt()
+  const systemPrompt = buildSystemPrompt(brand)
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+    'HTTP-Referer': 'https://ai-os.app',
+    'X-Title': brandName(),
+  }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://ai-os.app',
-      'X-Title': brandName(),
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages,
       ],
+      tools: AI_TOOLS,
+      tool_choice: 'auto',
       max_tokens: 1024,
       temperature: 0.7,
     }),
@@ -86,11 +113,50 @@ async function callOpenRouter(messages: ChatMessage[]): Promise<{ reply: string;
     throw new Error(`OpenRouter ${res.status}: ${err.slice(0, 200)}`)
   }
 
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
-    model?: string
+  const data = (await res.json()) as OpenRouterResponse
+  const msg = data.choices?.[0]?.message
+
+  // Handle tool calls — execute them, then follow up for natural-language reply
+  if (msg?.tool_calls && msg.tool_calls.length > 0) {
+    const toolResults = await Promise.all(
+      msg.tool_calls.map(async (tc: ToolCall) => {
+        const args = JSON.parse(tc.function.arguments) as ToolArgs
+        const result = await executeToolCall(brandId(), tc.function.name, args)
+        return {
+          role: 'tool' as const,
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        }
+      })
+    )
+
+    const followUpRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+          { role: 'assistant', content: null, tool_calls: msg.tool_calls },
+          ...toolResults,
+        ],
+        max_tokens: 1024,
+        temperature: 0.7,
+      }),
+    })
+
+    if (!followUpRes.ok) {
+      const err = await followUpRes.text().catch(() => '')
+      throw new Error(`OpenRouter follow-up ${followUpRes.status}: ${err.slice(0, 200)}`)
+    }
+
+    const followUpData = (await followUpRes.json()) as OpenRouterResponse
+    const finalReply = followUpData.choices?.[0]?.message?.content ?? 'Done.'
+    return { reply: finalReply, live: true, model: data.model ?? model }
   }
-  const reply = data.choices?.[0]?.message?.content ?? ''
+
+  const reply = msg?.content ?? ''
   if (!reply) throw new Error('empty response')
   return { reply, live: true, model: data.model ?? model }
 }
@@ -168,10 +234,12 @@ export function registerChat(app: Hono): void {
 
     if (messages.length === 0) return c.json({ error: 'messages is required' }, 400)
 
+    const brand = c.req.query('brand') ?? process.env.BRAND ?? 'default'
+
     // 1. OpenRouter (preferred — cheapest path, full context)
     if (process.env.OPENROUTER_API_KEY) {
       try {
-        const result = await callOpenRouter(messages)
+        const result = await callOpenRouter(messages, brand)
         return c.json({ ...result, brand: brandName() })
       } catch (err) {
         console.error('[chat] OpenRouter error:', (err as Error).message)

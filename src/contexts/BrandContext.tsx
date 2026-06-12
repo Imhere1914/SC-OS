@@ -16,21 +16,21 @@ export type BrandConfig = {
 const DEFAULTS: Record<string, BrandConfig> = {
   sc: {
     id: 'sc',
-    name: 'SC Intelligence',
+    name: 'Simple Connect',
     shortName: 'SC',
-    accentColor: '#2f6df6',
+    accentColor: '#22c55e',
   },
   hfm: {
     id: 'hfm',
-    name: 'HFM Intelligence',
+    name: 'Holistic Functional Care',
     shortName: 'HFM',
-    accentColor: '#7c6f9b',
+    accentColor: '#a3843b',
   },
   default: {
     id: 'default',
     name: 'AI OS',
     shortName: 'OS',
-    accentColor: '#2f6df6',
+    accentColor: '#22c55e',
   },
 }
 

@@ -1,12 +1,17 @@
 import type { Hono } from 'hono'
 import {
+  appendSubmission,
   createForm,
   deleteForm,
   listForms,
+  listSubmissions,
   updateForm,
 } from '../stores/forms-store'
 import { listContacts, createContact, updateContact } from '../stores/contacts-store'
+import { appendActivity } from '../stores/activity-store'
+import { appendNotification } from '../stores/notifications-store'
 import { triggerAutomations } from '../lib/automation-engine'
+import { eventBus } from '../lib/event-bus'
 
 export function registerForms(app: Hono) {
   // List
@@ -63,6 +68,15 @@ export function registerForms(app: Hono) {
     const body = await c.req.json().catch(() => ({})) as { fields?: Record<string, string> }
     const fields = body.fields ?? {}
 
+    // Cap obviously unbounded input from the public form ingest.
+    const fieldEntries = Object.entries(fields)
+    if (fieldEntries.length > 100) return c.json({ error: 'too many fields' }, 400)
+    for (const [, v] of fieldEntries) {
+      if (typeof v === 'string' && v.length > 10_000) {
+        return c.json({ error: 'field value too long' }, 400)
+      }
+    }
+
     // Extract well-known fields from submitted values
     const emailVal = Object.entries(fields).find(([, v]) => typeof v === 'string' && v.includes('@'))?.[1]
     const nameVal = Object.entries(fields).find(([k]) => k.toLowerCase().includes('name'))?.[1]
@@ -104,6 +118,29 @@ export function registerForms(app: Hono) {
     // Update submission count
     updateForm(id, { submissions_count: (form.submissions_count ?? 0) + 1 }, brand !== 'default' ? brand : undefined)
 
+    // Persist submission log
+    appendSubmission({
+      form_id: id,
+      brand: brand !== 'default' ? brand : undefined,
+      fields,
+      contact_id: contactId,
+    })
+
+    // Log activity + notification
+    if (contactId) {
+      appendActivity({
+        contact_id: contactId,
+        type: 'form_submitted',
+        description: `Submitted form: "${form.name}"`,
+        meta: { form_id: form.id, form_name: form.name },
+      })
+    }
+    appendNotification({
+      brand,
+      message: `New form submission: ${form.name}`,
+      context_summary: contactName ? `From ${contactName}` : 'Anonymous',
+    })
+
     // Fire automation
     void triggerAutomations('form_submitted', {
       contact_id: contactId,
@@ -113,7 +150,22 @@ export function registerForms(app: Hono) {
       form_name: form.name,
       ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`form_${k}`, v])),
     })
+    void eventBus.emit({
+      type: 'form.submitted',
+      brand,
+      entity_id: form.id,
+      entity_type: 'form',
+      data: { form_name: form.name, contact_id: contactId ?? '', contact_name: contactName ?? '', contact_email: contactEmail ?? '', actor: 'contact' },
+      occurred_at: new Date().toISOString(),
+    })
 
     return c.json({ ok: true, contact_id: contactId })
+  })
+
+  // ── Submissions log (authenticated) ─────────────────────────────────────────
+  app.get('/api/forms/:id/submissions', (c) => {
+    const brand = process.env.BRAND ?? 'default'
+    const subs = listSubmissions(c.req.param('id'), brand !== 'default' ? brand : undefined)
+    return c.json({ submissions: subs })
   })
 }

@@ -31,6 +31,15 @@ import { cn } from '@/lib/utils'
 import { useBrand } from '@/contexts/BrandContext'
 
 const QUERY_KEY = ['platform', 'avatars'] as const
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const ACCENT_GRADIENT =
+  'linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 65%, #000))'
+const ACCENT_GLOW = '0 2px 8px color-mix(in srgb, var(--theme-accent) 35%, transparent)'
+
+const primaryBtnCls =
+  'flex items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-semibold text-white transition-all duration-150 hover:-translate-y-px hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0'
+const primaryBtnStyle: React.CSSProperties = { background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }
 const SURFACES: AvatarSurface[] = ['both', 'chat', 'voice']
 const EMOJI_PRESETS = ['🤖', '🧑‍⚕️', '💼', '🌿', '✨', '🧠', '💬', '🎧', '👩‍💻', '🦾']
 
@@ -80,9 +89,18 @@ function AvatarDialog({
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-sm font-semibold text-[var(--theme-text)]">
-          {title}
-        </h2>
+        <div className="mb-4 flex items-center gap-3">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
+          >
+            <HugeiconsIcon icon={Mic01Icon} size={16} className="text-white" />
+          </span>
+          <div>
+            <h2 className="text-[14px] font-semibold text-[var(--theme-text)]">{title}</h2>
+            <p className="text-[11px] text-[var(--theme-muted)]">Voice + chat identity for your agent</p>
+          </div>
+        </div>
         <div className="space-y-3">
           <div>
             <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">
@@ -229,8 +247,8 @@ function AvatarDialog({
           <button
             onClick={() => onSubmit(form)}
             disabled={!form.name.trim() || isSubmitting}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: 'var(--theme-accent)' }}
+            className={primaryBtnCls}
+            style={primaryBtnStyle}
           >
             {isSubmitting ? 'Saving…' : 'Save'}
           </button>
@@ -341,49 +359,60 @@ export function AvatarsScreen() {
   return (
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HugeiconsIcon
-                icon={Mic01Icon}
-                size={18}
-                className="text-[var(--theme-accent)]"
-              />
-              <h1 className="text-base font-semibold text-[var(--theme-text)]">
-                Avatars
-              </h1>
-              {avatarsQuery.data && (
-                <span className="ml-1 text-xs text-[var(--theme-muted)]">
-                  ({avatarsQuery.data.length})
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--theme-accent)' }}
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
             >
-              <HugeiconsIcon icon={Add01Icon} size={14} />
-              New Avatar
-            </button>
+              <HugeiconsIcon icon={Mic01Icon} size={18} className="text-white" />
+            </span>
+            <div>
+              <h1 className="text-[20px] font-bold leading-tight text-[var(--theme-text)]">Avatars</h1>
+              <p className="mt-0.5 truncate text-[12px] text-[var(--theme-muted)]">
+                {avatarsQuery.data
+                  ? `${avatarsQuery.data.length} avatar${avatarsQuery.data.length !== 1 ? 's' : ''} · voice + chat identities for your AI agent`
+                  : 'Voice + chat identities for your AI agent'}
+              </p>
+            </div>
           </div>
-          <p className="mt-2 text-xs text-[var(--theme-muted)]">
-            Voice + chat identities for your AI agent. Voice preview uses your
-            browser's speech engine; production voice maps to the server TTS.
-          </p>
+          <button onClick={() => setShowCreate(true)} className={primaryBtnCls} style={primaryBtnStyle}>
+            <HugeiconsIcon icon={Add01Icon} size={14} />
+            New Avatar
+          </button>
         </header>
 
         {avatarsQuery.isLoading ? (
-          <div className="py-12 text-center text-sm text-[var(--theme-muted)]">
-            Loading…
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-48 animate-pulse rounded-2xl border opacity-60"
+                style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)' }}
+              />
+            ))}
           </div>
         ) : avatars.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-[var(--theme-muted)]">
-            <HugeiconsIcon icon={Mic01Icon} size={32} className="mb-3 opacity-40" />
-            <p className="text-sm font-medium">No avatars yet</p>
-            <p className="mt-1 text-xs">
+          <div
+            className="flex flex-col items-center justify-center gap-2 rounded-2xl border py-14 text-center"
+            style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)' }}
+          >
+            <span
+              className="flex h-12 w-12 items-center justify-center rounded-full"
+              style={{
+                background: 'linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 18%, var(--theme-card)), color-mix(in srgb, #000 14%, var(--theme-card)))',
+                color: 'var(--theme-accent)',
+              }}
+            >
+              <HugeiconsIcon icon={Mic01Icon} size={22} />
+            </span>
+            <p className="text-[13px] font-semibold text-[var(--theme-text)]">No avatars yet</p>
+            <p className="text-[11px] text-[var(--theme-muted)]">
               Create a voice + chat identity for your agent.
             </p>
+            <button onClick={() => setShowCreate(true)} className={cn(primaryBtnCls, 'mt-2')} style={primaryBtnStyle}>
+              <HugeiconsIcon icon={Add01Icon} size={13} /> New Avatar
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -395,20 +424,22 @@ export function AvatarsScreen() {
                   initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.96 }}
-                  className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4"
+                  className="rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+                  style={{ backdropFilter: 'blur(10px)' }}
                 >
                   <div className="flex items-start justify-between">
                     <div
-                      className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl"
+                      className="flex h-14 w-14 items-center justify-center rounded-full text-3xl"
                       style={{
-                        background: `color-mix(in srgb, ${a.accent_color} 18%, var(--theme-bg))`,
+                        background: `linear-gradient(135deg, color-mix(in srgb, ${a.accent_color} 35%, var(--theme-card)), color-mix(in srgb, ${a.accent_color} 65%, #000))`,
+                        boxShadow: `0 2px 8px color-mix(in srgb, ${a.accent_color} 35%, transparent)`,
                       }}
                     >
                       {a.image_url ? (
                         <img
                           src={a.image_url}
                           alt={a.name}
-                          className="h-full w-full rounded-2xl object-cover"
+                          className="h-full w-full rounded-full object-cover"
                         />
                       ) : (
                         a.emoji
@@ -416,8 +447,12 @@ export function AvatarsScreen() {
                     </div>
                     {a.is_default && (
                       <span
-                        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase"
-                        style={{ background: 'var(--theme-bg)', color: a.accent_color }}
+                        className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                        style={{
+                          background: `color-mix(in srgb, ${a.accent_color} 12%, var(--theme-card))`,
+                          color: a.accent_color,
+                          border: `1px solid color-mix(in srgb, ${a.accent_color} 30%, transparent)`,
+                        }}
                       >
                         <HugeiconsIcon icon={StarIcon} size={9} />
                         Default

@@ -20,6 +20,11 @@ import { useBrand } from '@/contexts/BrandContext'
 
 const QUERY_KEY = ['platform', 'plugins'] as const
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const ACCENT_GRADIENT =
+  'linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 65%, #000))'
+const ACCENT_GLOW = '0 2px 8px color-mix(in srgb, var(--theme-accent) 35%, transparent)'
+
 const CATEGORY_ORDER: PluginCategory[] = [
   'ai',
   'messaging',
@@ -45,9 +50,12 @@ function Toggle({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-40',
+        'relative h-5 w-9 shrink-0 rounded-full transition-all duration-150 disabled:opacity-40',
       )}
-      style={{ background: on ? 'var(--theme-accent)' : 'var(--theme-border)' }}
+      style={{
+        background: on ? ACCENT_GRADIENT : 'var(--theme-border)',
+        boxShadow: on ? ACCENT_GLOW : undefined,
+      }}
       aria-pressed={on}
     >
       <span
@@ -115,70 +123,79 @@ export function PluginsScreen() {
   return (
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HugeiconsIcon
-                icon={PlugSocketIcon}
-                size={18}
-                className="text-[var(--theme-accent)]"
-              />
-              <h1 className="text-base font-semibold text-[var(--theme-text)]">
-                Plugins
-              </h1>
-              <span className="ml-1 text-xs text-[var(--theme-muted)]">
-                ({enabledCount} enabled / {plugins.length})
-              </span>
-            </div>
-            <button
-              onClick={() =>
-                void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-              }
-              className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-              title="Refresh"
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
             >
-              <HugeiconsIcon
-                icon={RefreshIcon}
-                size={16}
-                className="text-[var(--theme-muted)]"
-              />
-            </button>
+              <HugeiconsIcon icon={PlugSocketIcon} size={18} className="text-white" />
+            </span>
+            <div>
+              <h1 className="text-[20px] font-bold leading-tight text-[var(--theme-text)]">Plugins</h1>
+              <p className="mt-0.5 truncate text-[12px] text-[var(--theme-muted)]">
+                {enabledCount} enabled of {plugins.length} · connect the channels and capabilities your AI OS uses
+              </p>
+            </div>
           </div>
-          <p className="mt-2 text-xs text-[var(--theme-muted)]">
-            Connect the channels and capabilities your AI OS uses. A plugin needs
-            its server keys configured (green check) before it runs.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {(['all', ...CATEGORY_ORDER] as const).map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategoryFilter(c)}
-                className={cn(
-                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                  categoryFilter === c
-                    ? 'border-transparent text-white'
-                    : 'border-[var(--theme-border)] text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]',
-                )}
-                style={
-                  categoryFilter === c
-                    ? { background: 'var(--theme-accent)' }
-                    : undefined
-                }
-              >
-                {c === 'all' ? 'All' : CATEGORY_LABELS[c]}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() =>
+              void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+            }
+            className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+            title="Refresh"
+          >
+            <HugeiconsIcon
+              icon={RefreshIcon}
+              size={16}
+              className="text-[var(--theme-muted)]"
+            />
+          </button>
         </header>
 
+        {/* Category filter — segmented control */}
+        <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-hover)] p-1">
+          {(['all', ...CATEGORY_ORDER] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCategoryFilter(c)}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all duration-150',
+                categoryFilter === c
+                  ? 'shadow-sm'
+                  : 'text-[var(--theme-muted)] hover:text-[var(--theme-text)]',
+              )}
+              style={
+                categoryFilter === c
+                  ? {
+                      background: 'color-mix(in srgb, var(--theme-accent) 14%, var(--theme-card))',
+                      color: 'var(--theme-accent)',
+                    }
+                  : undefined
+              }
+            >
+              {c === 'all' ? 'All' : CATEGORY_LABELS[c]}
+              <span className="ml-1 opacity-60 tabular-nums">
+                {c === 'all' ? plugins.length : plugins.filter((p) => p.category === c).length}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {pluginsQuery.isLoading ? (
-          <div className="py-12 text-center text-sm text-[var(--theme-muted)]">
-            Loading…
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-24 animate-pulse rounded-xl border opacity-60"
+                style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)' }}
+              />
+            ))}
           </div>
         ) : (
           byCategory.map((group) => (
             <div key={group.category}>
-              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-[var(--theme-muted)]">
+              <h2 className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--theme-muted)]">
                 {CATEGORY_LABELS[group.category]}
               </h2>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -187,7 +204,8 @@ export function PluginsScreen() {
                   return (
                     <div
                       key={p.id}
-                      className="flex items-start gap-3 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4"
+                      className="flex items-start gap-3 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4 transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+                      style={{ backdropFilter: 'blur(10px)' }}
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--theme-bg)] text-xl">
                         {p.emoji}
@@ -215,32 +233,41 @@ export function PluginsScreen() {
                         <p className="mt-0.5 line-clamp-2 text-xs text-[var(--theme-muted)]">
                           {p.description}
                         </p>
-                        <div className="mt-1.5 flex items-center gap-2 text-[10px]">
+                        <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px]">
                           {p.configured ? (
                             <span
-                              className="flex items-center gap-1"
-                              style={{ color: 'var(--theme-success)' }}
+                              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5"
+                              style={{
+                                color: '#10b981',
+                                background: 'color-mix(in srgb, #10b981 12%, var(--theme-card))',
+                                border: '1px solid color-mix(in srgb, #10b981 30%, transparent)',
+                              }}
                             >
                               <HugeiconsIcon
                                 icon={CheckmarkCircle01Icon}
                                 size={10}
                               />
-                              Configured
+                              configured
                             </span>
                           ) : p.env_vars.length > 0 ? (
                             <span
-                              className="text-[var(--theme-muted)]"
+                              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5"
+                              style={{
+                                color: '#f59e0b',
+                                background: 'color-mix(in srgb, #f59e0b 12%, var(--theme-card))',
+                                border: '1px solid color-mix(in srgb, #f59e0b 30%, transparent)',
+                              }}
                               title={p.env_vars.join(', ')}
                             >
-                              Needs: {p.env_vars.length} key
+                              needs {p.env_vars.length} key
                               {p.env_vars.length !== 1 ? 's' : ''}
                             </span>
                           ) : (
                             <span className="text-[var(--theme-muted)]">
-                              No keys required
+                              no keys required
                             </span>
                           )}
-                          <span className="text-[var(--theme-muted)]">
+                          <span className="truncate text-[var(--theme-muted)]">
                             · {p.setup}
                           </span>
                         </div>

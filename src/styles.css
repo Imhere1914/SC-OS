@@ -8,79 +8,94 @@
  * Inter type. SC = cool blue-white. HFM = warm cream-lavender.
  */
 
-/* ─── SC (default) ─────────────────────────────────────────────── */
+/* ─── SC (default) — charcoal + vibrant green ────────────────── */
 :root,
 :root[data-brand='sc'] {
-  --theme-bg: #f4f7ff;
+  --theme-bg: #f3f5f4;
   --theme-bg-grad:
-    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(79, 126, 248, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(124, 111, 210, 0.07) 0%, transparent 55%),
-    #f4f7ff;
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(34, 197, 94, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(74, 222, 128, 0.06) 0%, transparent 55%),
+    #f3f5f4;
   --theme-card: rgba(255, 255, 255, 0.85);
   --theme-card-solid: #ffffff;
-  --theme-border: rgba(199, 214, 248, 0.70);
+  --theme-card-glass: rgba(255, 255, 255, 0.74);
+  --theme-veil: rgba(243, 245, 244, 0.55);
+  --theme-veil-grad:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(34, 197, 94, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(74, 222, 128, 0.03) 0%, transparent 55%),
+    rgba(243, 245, 244, 0.55);
+  --theme-border: rgba(180, 200, 188, 0.70);
   --theme-input: rgba(255, 255, 255, 0.90);
-  --theme-hover: rgba(79, 126, 248, 0.07);
-  --theme-text: #0d1630;
-  --theme-muted: #5a6888;
-  --theme-accent: #4f7ef8;
-  --theme-accent-soft: rgba(79, 126, 248, 0.12);
-  --theme-glow: 0 0 0 3px rgba(79, 126, 248, 0.18), 0 0 24px rgba(79, 126, 248, 0.12);
-  --theme-success: #1fa85c;
+  --theme-hover: rgba(34, 197, 94, 0.07);
+  --theme-text: #1a1e1b;
+  --theme-muted: #5a6b60;
+  --theme-accent: #22c55e;
+  --theme-accent-soft: rgba(34, 197, 94, 0.12);
+  --theme-glow: 0 0 0 3px rgba(34, 197, 94, 0.18), 0 0 24px rgba(34, 197, 94, 0.12);
+  --theme-glow-strong:
+    0 0 0 3px color-mix(in srgb, var(--theme-accent) 24%, transparent),
+    0 0 40px color-mix(in srgb, var(--theme-accent) 22%, transparent);
+  --theme-success: #16a34a;
   --theme-warning: #d08600;
   --theme-danger: #d44444;
-  --theme-sidebar-bg: rgba(248, 251, 255, 0.94);
-  --theme-sidebar-border: rgba(199, 214, 248, 0.55);
+  --theme-sidebar-bg: rgba(246, 249, 247, 0.94);
+  --theme-sidebar-border: rgba(180, 200, 188, 0.55);
 
-  --primary-50:  #eef3ff;
-  --primary-100: #dde7ff;
-  --primary-200: #c0cffe;
-  --primary-300: #98b1fc;
-  --primary-400: #7095f9;
-  --primary-500: #4f7ef8;
-  --primary-600: #3062e8;
-  --primary-700: #234fcb;
-  --primary-800: #1c3fa2;
-  --primary-900: #183582;
-  --primary-950: #0f1f50;
+  --primary-50:  #f0fdf4;
+  --primary-100: #dcfce7;
+  --primary-200: #bbf7d0;
+  --primary-300: #86efac;
+  --primary-400: #4ade80;
+  --primary-500: #22c55e;
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+  --primary-800: #166534;
+  --primary-900: #14532d;
+  --primary-950: #052e16;
 
   --tabbar-h: 0px;
 }
 
-/* ─── HFM ──────────────────────────────────────────────────────── */
+/* ─── HFM — warm brown + olive ────────────────────────────────── */
 :root[data-brand='hfm'] {
-  --theme-bg: #fdf7ff;
+  --theme-bg: #f7f4f0;
   --theme-bg-grad:
-    radial-gradient(ellipse 70% 55% at 15% 5%,  rgba(160, 132, 220, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(230, 180, 210, 0.08) 0%, transparent 55%),
-    #fdf7ff;
+    radial-gradient(ellipse 70% 55% at 15% 5%,  rgba(163, 132, 59, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(139, 154, 60, 0.06) 0%, transparent 55%),
+    #f7f4f0;
   --theme-card: rgba(255, 255, 255, 0.87);
   --theme-card-solid: #ffffff;
-  --theme-border: rgba(210, 190, 238, 0.65);
+  --theme-card-glass: rgba(255, 255, 255, 0.76);
+  --theme-veil: rgba(247, 244, 240, 0.55);
+  --theme-veil-grad:
+    radial-gradient(ellipse 70% 55% at 15% 5%,  rgba(163, 132, 59, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(139, 154, 60, 0.04) 0%, transparent 55%),
+    rgba(247, 244, 240, 0.55);
+  --theme-border: rgba(200, 185, 155, 0.65);
   --theme-input: rgba(255, 255, 255, 0.90);
-  --theme-hover: rgba(160, 132, 220, 0.08);
-  --theme-text: #1a1228;
-  --theme-muted: #6e5f88;
-  --theme-accent: #8b7dbf;
-  --theme-accent-soft: rgba(139, 125, 191, 0.13);
-  --theme-glow: 0 0 0 3px rgba(139, 125, 191, 0.20), 0 0 24px rgba(139, 125, 191, 0.12);
-  --theme-success: #3aaa7e;
+  --theme-hover: rgba(163, 132, 59, 0.07);
+  --theme-text: #211e18;
+  --theme-muted: #7a7060;
+  --theme-accent: #a3843b;
+  --theme-accent-soft: rgba(163, 132, 59, 0.12);
+  --theme-glow: 0 0 0 3px rgba(163, 132, 59, 0.18), 0 0 24px rgba(163, 132, 59, 0.10);
+  --theme-success: #5a8a3e;
   --theme-warning: #c98a3a;
-  --theme-danger: #c75c5c;
-  --theme-sidebar-bg: rgba(252, 248, 255, 0.94);
-  --theme-sidebar-border: rgba(210, 190, 238, 0.50);
+  --theme-danger: #b85454;
+  --theme-sidebar-bg: rgba(250, 247, 242, 0.94);
+  --theme-sidebar-border: rgba(200, 185, 155, 0.50);
 
-  --primary-50:  #f6f0ff;
-  --primary-100: #ede0ff;
-  --primary-200: #dcc4fe;
-  --primary-300: #c59bf9;
-  --primary-400: #ac76f3;
-  --primary-500: #8b7dbf;
-  --primary-600: #7665aa;
-  --primary-700: #60528d;
-  --primary-800: #4f4474;
-  --primary-900: #423a5f;
-  --primary-950: #28213c;
+  --primary-50:  #faf6ee;
+  --primary-100: #f2eacc;
+  --primary-200: #e5d49a;
+  --primary-300: #d4b868;
+  --primary-400: #c6a04a;
+  --primary-500: #a3843b;
+  --primary-600: #8a6e30;
+  --primary-700: #6f5828;
+  --primary-800: #5c4924;
+  --primary-900: #4d3e22;
+  --primary-950: #2c2110;
 
   --tabbar-h: 0px;
 }
@@ -108,6 +123,43 @@ body {
   -webkit-backdrop-filter: blur(14px);
 }
 
+/* ─── Cinematic screen veil ──────────────────────────────────────
+   Applied to the shared screen container so the ambient aurora (mounted
+   fixed behind the app at -z-10) shows softly THROUGH every routed screen.
+   The veil is a semi-opaque themed wash + light blur: enough to keep content
+   AA-legible, translucent enough that the living brand-tinted depth reads
+   behind it. Replaces the previously-opaque `--theme-bg-grad` page fills. */
+.cine-screen {
+  background: var(--theme-veil-grad);
+  background-attachment: fixed;
+  backdrop-filter: blur(2px) saturate(115%);
+  -webkit-backdrop-filter: blur(2px) saturate(115%);
+}
+
+/* Faint brand wash + hairline glow on the chrome/header zone of every screen,
+   so each screen opens with brand presence (mirrors the sidebar treatment).
+   Colour arrives via --cine-accent / --cine-glow set inline per brand. */
+.cine-chrome-wash {
+  position: relative;
+}
+.cine-chrome-wash::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 180px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cine-accent, var(--theme-accent)) 7%, transparent),
+    transparent 80%
+  );
+  z-index: 0;
+}
+.cine-chrome-wash > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* ─── AI glow ring — assistant surfaces, focused inputs ───────── */
 .ai-glow {
   box-shadow: var(--theme-glow);
@@ -118,7 +170,7 @@ body {
   background: linear-gradient(
     135deg,
     var(--theme-accent),
-    color-mix(in srgb, var(--theme-accent) 72%, #7b3fe4)
+    color-mix(in srgb, var(--theme-accent) 72%, #000)
   );
   color: white;
   border: none;
@@ -136,6 +188,69 @@ body {
   opacity: 0.48;
 }
 
+/* ─── Dark mode — SC (charcoal + green) ───────────────────────── */
+:root[data-theme='dark'],
+:root[data-theme='dark'][data-brand='sc'] {
+  --theme-bg: #0f1210;
+  --theme-bg-grad:
+    radial-gradient(ellipse 80% 60% at 10% 0%,  rgba(34, 197, 94, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(74, 222, 128, 0.07) 0%, transparent 55%),
+    #0f1210;
+  --theme-card: rgba(18, 22, 19, 0.94);
+  --theme-card-solid: #141816;
+  --theme-card-glass: rgba(18, 22, 19, 0.82);
+  --theme-veil: rgba(15, 18, 16, 0.58);
+  --theme-veil-grad:
+    radial-gradient(ellipse 80% 60% at 10% 0%,  rgba(34, 197, 94, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(74, 222, 128, 0.04) 0%, transparent 55%),
+    rgba(15, 18, 16, 0.58);
+  --theme-border: rgba(50, 80, 58, 0.30);
+  --theme-input: rgba(12, 16, 13, 0.95);
+  --theme-hover: rgba(34, 197, 94, 0.10);
+  --theme-text: #f0f8f2;
+  --theme-muted: #92b59a;
+  --theme-accent: #4ade80;
+  --theme-accent-soft: rgba(74, 222, 128, 0.16);
+  --theme-glow: 0 0 0 3px rgba(74, 222, 128, 0.20), 0 0 24px rgba(74, 222, 128, 0.12);
+  --theme-success: #4ade80;
+  --theme-warning: #f0a030;
+  --theme-danger: #f06868;
+  --theme-sidebar-bg: rgba(10, 14, 11, 0.98);
+  --theme-sidebar-border: rgba(40, 70, 48, 0.24);
+  color-scheme: dark;
+}
+
+/* ─── Dark mode — HFM (brown + olive) ─────────────────────────── */
+:root[data-theme='dark'][data-brand='hfm'] {
+  --theme-bg: #141110;
+  --theme-bg-grad:
+    radial-gradient(ellipse 70% 55% at 15% 5%,  rgba(163, 132, 59, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(139, 154, 60, 0.07) 0%, transparent 55%),
+    #141110;
+  --theme-card: rgba(22, 19, 16, 0.94);
+  --theme-card-solid: #1a1714;
+  --theme-card-glass: rgba(22, 19, 16, 0.82);
+  --theme-veil: rgba(20, 17, 16, 0.58);
+  --theme-veil-grad:
+    radial-gradient(ellipse 70% 55% at 15% 5%,  rgba(163, 132, 59, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 85%, rgba(139, 154, 60, 0.05) 0%, transparent 55%),
+    rgba(20, 17, 16, 0.58);
+  --theme-border: rgba(100, 85, 55, 0.28);
+  --theme-input: rgba(16, 14, 12, 0.95);
+  --theme-hover: rgba(163, 132, 59, 0.10);
+  --theme-text: #ede5d8;
+  --theme-muted: #a0927a;
+  --theme-accent: #c4a04e;
+  --theme-accent-soft: rgba(196, 160, 78, 0.16);
+  --theme-glow: 0 0 0 3px rgba(196, 160, 78, 0.20), 0 0 24px rgba(196, 160, 78, 0.10);
+  --theme-success: #6a9e48;
+  --theme-warning: #d4904a;
+  --theme-danger: #c86060;
+  --theme-sidebar-bg: rgba(12, 10, 8, 0.98);
+  --theme-sidebar-border: rgba(90, 75, 48, 0.20);
+  color-scheme: dark;
+}
+
 /* ─── Scrollbar — whisper thin ─────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -145,4 +260,482 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--theme-accent) 40%, var(--theme-border));
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-border) transparent;
+}
+
+/* ─── Focus rings — accent, consistent ──────────────────────────── */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--theme-accent) 65%, transparent);
+  outline-offset: 1px;
+}
+
+/* ─── Ambient motion ────────────────────────────────────────────── */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50%      { transform: scale(1.18); opacity: 0.95; }
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Route-content entrance — applied to the outlet wrapper, keyed by pathname
+   so it only plays on navigation, never on poll re-renders. */
+.route-enter {
+  animation: fadeSlideIn 150ms ease-out;
+}
+
+/* ─── Hermes presence orb — breathing glow halo ─────────────────── */
+.hermes-orb { position: relative; }
+.hermes-orb::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--theme-accent) 45%, #000) 0%,
+    transparent 70%
+  );
+  filter: blur(6px);
+  z-index: -1;
+  animation: breathe 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-orb::after { animation: none; }
+  .route-enter { animation: none; }
+}
+
+/* ─── Cinematic home ("Netflix meets OS") ───────────────────────── */
+
+/* Slow aurora drift behind the hero — GPU-cheap (transform/opacity only). */
+@keyframes cine-aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
+  50%      { transform: translate3d(6%, 4%, 0) scale(1.15); opacity: 0.8; }
+}
+@keyframes cine-aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); opacity: 0.45; }
+  50%      { transform: translate3d(-7%, -5%, 0) scale(1); opacity: 0.7; }
+}
+.cine-aurora-a { animation: cine-aurora-a 18s ease-in-out infinite; will-change: transform, opacity; }
+.cine-aurora-b { animation: cine-aurora-b 24s ease-in-out infinite; will-change: transform, opacity; }
+
+/* Staggered fade + slide-up entrance for hero + rows (plays once on mount). */
+@keyframes cine-fade-slide {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cine-enter {
+  opacity: 0;
+  animation: cine-fade-slide 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Soft pulsing alert dot for attention cards. */
+@keyframes cine-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.4; }
+}
+.cine-pulse-dot { animation: cine-pulse 1.8s ease-in-out infinite; will-change: transform, opacity; }
+
+/* Animated metric bar shimmer. */
+@keyframes cine-bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.cine-bar-fill {
+  transform-origin: left;
+  animation: cine-bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-aurora-a,
+  .cine-aurora-b,
+  .cine-pulse-dot { animation: none; }
+  .cine-enter { opacity: 1; animation: none; }
+  .cine-bar-fill { animation: none; transform: scaleX(1); }
+}
+
+/* ─── Cinematic shell layer (ambient bg + route transitions + launcher) ── */
+
+/* Ambient aurora — 3 large blurred blobs drifting on long eased loops.
+   GPU-cheap: transform/opacity only. Brand colours come from brand-cinema
+   (inline style); CSS only owns the felt-motion character per brand.
+
+   SC ("Command Center") — tighter drift, smaller scale swing, a touch faster:
+   crisp + electric. */
+@keyframes cine-aurora-sc-1 {
+  0%, 100% { transform: translate3d(-2%, -1%, 0) scale(1); opacity: 0.52; }
+  50%      { transform: translate3d(4%, 3%, 0) scale(1.1); opacity: 0.74; }
+}
+@keyframes cine-aurora-sc-2 {
+  0%, 100% { transform: translate3d(3%, 2%, 0) scale(1.08); opacity: 0.42; }
+  50%      { transform: translate3d(-4%, -3%, 0) scale(1); opacity: 0.66; }
+}
+@keyframes cine-aurora-sc-3 {
+  0%, 100% { transform: translate3d(1%, 3%, 0) scale(1.02); opacity: 0.36; }
+  50%      { transform: translate3d(-2%, -3%, 0) scale(1.1); opacity: 0.58; }
+}
+.cine-aurora-sc-1 { animation: cine-aurora-sc-1 26s ease-in-out infinite; will-change: transform, opacity; }
+.cine-aurora-sc-2 { animation: cine-aurora-sc-2 34s ease-in-out infinite; will-change: transform, opacity; }
+.cine-aurora-sc-3 { animation: cine-aurora-sc-3 40s ease-in-out infinite; will-change: transform, opacity; }
+
+/* HFM ("Sanctuary") — wider drift, bigger scale swing, much slower: soft +
+   organic, like slow breathing. */
+@keyframes cine-aurora-hfm-1 {
+  0%, 100% { transform: translate3d(-6%, -3%, 0) scale(1); opacity: 0.46; }
+  50%      { transform: translate3d(9%, 7%, 0) scale(1.28); opacity: 0.7; }
+}
+@keyframes cine-aurora-hfm-2 {
+  0%, 100% { transform: translate3d(7%, 4%, 0) scale(1.2); opacity: 0.38; }
+  50%      { transform: translate3d(-9%, -6%, 0) scale(1); opacity: 0.62; }
+}
+@keyframes cine-aurora-hfm-3 {
+  0%, 100% { transform: translate3d(3%, 8%, 0) scale(1.06); opacity: 0.32; }
+  50%      { transform: translate3d(-5%, -7%, 0) scale(1.26); opacity: 0.56; }
+}
+.cine-aurora-hfm-1 { animation: cine-aurora-hfm-1 52s ease-in-out infinite; will-change: transform, opacity; }
+.cine-aurora-hfm-2 { animation: cine-aurora-hfm-2 68s ease-in-out infinite; will-change: transform, opacity; }
+.cine-aurora-hfm-3 { animation: cine-aurora-hfm-3 80s ease-in-out infinite; will-change: transform, opacity; }
+
+/* ─── Cinematic sidebar ("OS dock") ─────────────────────────────────
+   Brand-agnostic keyframes + hover/active mechanics. Brand colours are
+   injected via the --cine-* CSS vars set inline on the sidebar root. */
+
+/* SC: crisp electric pulse on the brand mark / orb. HFM: soft warm breathe. */
+@keyframes cine-glow-pulse-sharp {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.06); }
+}
+@keyframes cine-glow-pulse-soft {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 0.8; transform: scale(1.12); }
+}
+.cine-brandmark { position: relative; }
+.cine-brandmark::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: radial-gradient(circle, var(--cine-glow, var(--theme-accent)) 0%, transparent 70%);
+  filter: blur(8px);
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.cine-brandmark[data-motion='sharp']::after { animation: cine-glow-pulse-sharp 2.4s ease-in-out infinite; }
+.cine-brandmark[data-motion='organic']::after { animation: cine-glow-pulse-soft 4.5s ease-in-out infinite; }
+
+/* Active nav item — glowing left accent bar + soft brand glass pill. */
+.cine-nav-item {
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), color 150ms ease,
+    background-color 150ms ease, box-shadow 150ms ease;
+}
+.cine-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 0;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--cine-gradient, var(--theme-accent));
+  box-shadow: 0 0 8px var(--cine-glow, var(--theme-accent));
+  transform: translateY(-50%);
+  transition: height 150ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.cine-nav-item:hover { transform: translateX(2px); }
+.cine-nav-item:hover::before { height: 14px; opacity: 0.5; }
+.cine-nav-item[data-active='true']::before { height: 18px; opacity: 1; }
+
+/* Hairline brand dividers + glow chips reuse this. */
+.cine-glow-hover {
+  transition: box-shadow 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+.cine-glow-hover:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 30%, transparent),
+    0 4px 14px -6px var(--cine-glow, var(--theme-accent));
+}
+
+/* Route-content enter — soft fade + 6px rise + slight scale, once per nav. */
+@keyframes cine-route-enter {
+  from { opacity: 0; transform: translateY(6px) scale(0.994); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cine-route-enter {
+  animation: cine-route-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* App launcher — full-screen glass overlay scaling in from center. */
+@keyframes cine-launcher-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.cine-launcher-in {
+  animation: cine-launcher-in 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Launcher tile — hover lift/scale + glow, and focused (keyboard) state. */
+.cine-tile {
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms ease, border-color 160ms ease;
+  will-change: transform;
+}
+.cine-tile:hover,
+.cine-tile.cine-tile-active {
+  transform: translateY(-3px) scale(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-aurora-sc-1,
+  .cine-aurora-sc-2,
+  .cine-aurora-sc-3,
+  .cine-aurora-hfm-1,
+  .cine-aurora-hfm-2,
+  .cine-aurora-hfm-3 { animation: none; }
+  .cine-brandmark::after { animation: none; }
+  .cine-nav-item { transition: color 150ms ease, background-color 150ms ease; }
+  .cine-nav-item:hover { transform: none; }
+  .cine-nav-item::before { transition: opacity 150ms ease; }
+  .cine-route-enter { animation: none; opacity: 1; transform: none; }
+  .cine-launcher-in { animation: none; opacity: 1; transform: none; }
+  .cine-tile { transition: none; }
+  .cine-tile:hover,
+  .cine-tile.cine-tile-active { transform: none; }
+}
+
+/* ─── Cinematic login screen ────────────────────────────────────────
+   Brand colours are injected via inline --cine-* vars on the root.
+   Keyframes namespaced cine-login-*; all frozen under reduced-motion. */
+
+/* Gentle entrance: fade + scale + rise. Used once, on mount. */
+@keyframes cine-login-rise {
+  from { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes cine-login-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.cine-login-card {
+  opacity: 0;
+  animation: cine-login-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+  will-change: transform, opacity;
+}
+.cine-login-backdrop {
+  opacity: 0;
+  animation: cine-login-fade 1s ease forwards;
+}
+
+/* Breathing brand orb — character differs per brand via data-motion. */
+@keyframes cine-login-orb-sharp {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+@keyframes cine-login-orb-soft {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%      { transform: scale(1.09); opacity: 1; }
+}
+.cine-login-orb-glow { will-change: transform, opacity; }
+.cine-login-orb-glow[data-motion='sharp'] { animation: cine-login-orb-sharp 3.2s ease-in-out infinite; }
+.cine-login-orb-glow[data-motion='organic'] { animation: cine-login-orb-soft 5.5s ease-in-out infinite; }
+
+/* Dark glass input with brand focus-glow (glow colour from --cine-glow). */
+.cine-login-input {
+  transition: border-color 180ms ease, box-shadow 220ms ease, background-color 180ms ease;
+}
+.cine-login-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 22%, transparent),
+    0 0 18px -4px color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 55%, transparent);
+  background-color: color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 6%, transparent);
+}
+
+/* Sign-in button — brand gradient + glow + satisfying press. */
+.cine-login-btn {
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease, filter 160ms ease, opacity 160ms ease;
+  will-change: transform;
+}
+.cine-login-btn:not(:disabled):hover { filter: brightness(1.08); box-shadow: 0 8px 28px -8px var(--cine-glow, var(--theme-accent)); }
+.cine-login-btn:not(:disabled):active { transform: scale(0.975); filter: brightness(0.96); }
+
+/* SC-only subtle tech scanline accent over the backdrop. */
+.cine-login-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 9%, transparent) 0px,
+    color-mix(in srgb, var(--cine-glow, var(--theme-accent)) 9%, transparent) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-login-card { opacity: 1; animation: none; transform: none; }
+  .cine-login-backdrop { opacity: 1; animation: none; }
+  .cine-login-orb-glow { animation: none; }
+  .cine-login-btn { transition: filter 160ms ease, opacity 160ms ease; }
+  .cine-login-btn:not(:disabled):active { transform: none; }
+}
+
+/* ─── Cinematic cover-art posters (Explore / Quick actions) ─────────
+   Springy hover: lift + glow intensifies + watermark grows + descriptor
+   brightens. The lift/scale lives on CARD_BASE; here we own the glow,
+   the watermark, and the footer reveal. transform/opacity only — 60fps. */
+.cine-poster {
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 220ms ease;
+}
+.cine-poster:hover {
+  box-shadow: 0 18px 44px -16px var(--poster-glow, var(--theme-accent)),
+    0 0 0 1px color-mix(in srgb, var(--poster-glow, var(--theme-accent)) 35%, transparent);
+}
+.cine-poster-mark {
+  opacity: 0.16;
+  transform: rotate(-8deg);
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 220ms ease;
+  will-change: transform, opacity;
+}
+.cine-poster:hover .cine-poster-mark {
+  opacity: 0.26;
+  transform: rotate(-8deg) scale(1.12);
+}
+.cine-poster-desc {
+  opacity: 0.55;
+  transition: opacity 200ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cine-poster:hover .cine-poster-desc {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-poster,
+  .cine-poster-mark,
+  .cine-poster-desc { transition: none; }
+  .cine-poster:hover .cine-poster-mark { transform: rotate(-8deg); opacity: 0.16; }
+  .cine-poster:hover .cine-poster-desc { transform: none; opacity: 1; }
+}
+
+/* ─── Mobile PWA / safe-area utilities ──────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+}
+
+/* On mobile, add bottom padding to main content area for bottom nav */
+@media (max-width: 767px) {
+  main {
+    padding-bottom: 64px;
+  }
+  /* Prevent double-padding on public pages */
+  .no-bottom-nav main {
+    padding-bottom: 0;
+  }
+}
+
+/* ─── Touch target minimum size ─────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  button, a[role="button"], [role="tab"] {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* ─── Overscroll behavior — prevents pull-to-refresh on iOS ─────── */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* ─── Finance dashboard — cinematic flagship polish ─────────────────
+   Namespaced `fin-*`. Brand colours arrive via the inline --fin-glow var
+   and inline gradients; CSS only owns the brand-agnostic motion + glow
+   mechanics. GPU-cheap (transform/opacity only). */
+
+/* Brand-gradient accent rail grows in from the left on mount. */
+@keyframes fin-rail-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.fin-rail {
+  transform-origin: left;
+  animation: fin-rail-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform;
+}
+
+/* Stat cards + panels lift with a soft brand glow on hover. */
+.fin-stat:hover,
+.fin-panel:hover {
+  border-color: color-mix(in srgb, var(--fin-glow, var(--theme-accent)) 40%, var(--theme-border));
+  box-shadow: 0 14px 34px -16px color-mix(in srgb, var(--fin-glow, var(--theme-accent)) 60%, transparent);
+}
+
+/* Quick-action tiles glow on hover. */
+.fin-tile:hover {
+  border-color: color-mix(in srgb, var(--fin-glow, var(--theme-accent)) 45%, var(--theme-border));
+  box-shadow: 0 12px 30px -14px color-mix(in srgb, var(--fin-glow, var(--theme-accent)) 60%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fin-rail { animation: none; transform: scaleX(1); }
+}
+
+/* ── Wellness player (Daily Wellness) ─────────────────────────────────────────
+   "Sanctuary" — HFM warm-violet. Namespaced `wl-*`. Brand colours arrive via
+   inline gradients / CSS vars; CSS owns only the brand-agnostic motion mechanics.
+   GPU-cheap (transform/opacity only). */
+
+@keyframes wl-drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(6%, 4%, 0) scale(1.12); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes wl-drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%  { transform: translate3d(-7%, -3%, 0) scale(1); }
+  100% { transform: translate3d(0, 0, 0) scale(1.05); }
+}
+.wl-blob-a { animation: wl-drift-a 22s ease-in-out infinite; will-change: transform; }
+.wl-blob-b { animation: wl-drift-b 28s ease-in-out infinite; will-change: transform; }
+
+@keyframes wl-card-in { from { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.97); } to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); } }
+.wl-card-in { animation: wl-card-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes wl-rise { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.wl-rise { animation: wl-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes wl-spring { 0% { transform: scale(0.5); } 55% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.wl-spring { animation: wl-spring 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes wl-burst { 0% { transform: scale(0.4); opacity: 0.85; } 100% { transform: scale(2.4); opacity: 0; } }
+.wl-burst { animation: wl-burst 0.6s ease-out both; }
+
+@keyframes wl-point { 0% { transform: translateY(0) scale(0.7); opacity: 0; } 30% { transform: translateY(-6px) scale(1.1); opacity: 1; } 100% { transform: translateY(-26px) scale(1); opacity: 0; } }
+.wl-point { animation: wl-point 1.1s ease-out both; }
+
+@keyframes wl-head { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.wl-head { animation: wl-head 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes wl-pulse { 0%, 100% { box-shadow: 0 16px 40px -16px var(--wl-glow, rgba(168,85,247,0.6)); } 50% { box-shadow: 0 22px 54px -14px var(--wl-glow, rgba(168,85,247,0.9)); } }
+.wl-pulse { animation: wl-pulse 3.2s ease-in-out infinite; }
+
+@keyframes wl-shimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+.wl-shimmer { position: relative; overflow: hidden; }
+.wl-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); transform: translateX(-120%); animation: wl-shimmer 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-blob-a, .wl-blob-b, .wl-card-in, .wl-rise, .wl-spring, .wl-burst,
+  .wl-point, .wl-head, .wl-pulse { animation: none !important; }
+  .wl-shimmer::after { animation: none !important; display: none; }
+  .wl-card-in, .wl-rise, .wl-head { opacity: 1; transform: none; }
 }

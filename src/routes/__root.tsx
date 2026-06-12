@@ -58,6 +58,7 @@ import { PushOptIn } from '@/components/PushOptIn'
 import { LoginScreen } from '@/components/LoginScreen'
 import { AmbientBackground } from '@/components/AmbientBackground'
 import { AppLauncher, useAppLauncher } from '@/components/AppLauncher'
+import { HermesFloat } from '@/components/HermesFloat'
 
 // ── Auth state ─────────────────────────────────────────────────────────────────
 type AuthMe = { authenticated: boolean; auth_enabled: boolean; email?: string }
@@ -959,6 +960,7 @@ function RootLayout() {
     <MobileBottomNav onOpenLauncher={openLauncher} />
     <PwaInstallBanner />
     <PushOptIn />
+    <HermesFloat />
     </>
   )
 }

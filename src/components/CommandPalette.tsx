@@ -18,6 +18,7 @@ import {
   Layout01Icon,
   Mail01Icon,
   Money01Icon,
+  Money02Icon,
   Search01Icon,
   Share04Icon,
   StarIcon,
@@ -64,10 +65,10 @@ const CREATE_ITEMS = (navigate: ReturnType<typeof useNavigate>, close: () => voi
   { id: 'create-campaign', label: 'New Campaign', sub: 'Open Campaigns screen', icon: Mail01Icon, section: 'Create', action: () => { void navigate({ to: '/campaigns' }); close() } },
 ]
 
-type SearchHit = { id: string; type: string; title: string; sub: string; link: string }
+type SearchHit = { id: string; type: string; title: string; subtitle?: string; sub?: string; meta?: string; url?: string; link?: string; icon?: string }
 
 function HitIcon({ type }: { type: string }) {
-  const icon = type === 'contact' ? UserGroupIcon : type === 'conversation' ? Chat01Icon : type === 'appointment' ? Calendar01Icon : Money01Icon
+  const icon = type === 'contact' ? UserGroupIcon : type === 'conversation' ? Chat01Icon : type === 'appointment' ? Calendar01Icon : type === 'deal' ? Money02Icon : Money01Icon
   return <HugeiconsIcon icon={icon} size={13} />
 }
 
@@ -88,10 +89,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const searchQuery = useQuery({
     queryKey: ['cmd-search', query, brand.id],
     queryFn: async () => {
-      if (query.length < 2) return { hits: [] as SearchHit[] }
+      if (query.length < 2) return { results: [] as SearchHit[] }
       const brandParam = brand.id !== 'default' ? `&brand=${brand.id}` : ''
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}${brandParam}`)
-      return res.json() as Promise<{ hits: SearchHit[] }>
+      return res.json() as Promise<{ results: SearchHit[] }>
     },
     enabled: open,
   })
@@ -105,13 +106,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const items: Item[] = query.trim()
     ? [
         // Search hits first
-        ...(searchQuery.data?.hits ?? []).map(h => ({
+        ...(searchQuery.data?.results ?? []).map(h => ({
           id: `hit-${h.id}`,
           label: h.title,
-          sub: h.sub,
+          sub: h.subtitle ?? h.sub ?? '',
           icon: UserGroupIcon,
           section: 'Results',
-          action: () => { void navigate({ to: h.link as '/' }); close() },
+          action: () => { void navigate({ to: (h.url ?? h.link ?? '/') as '/' }); close() },
         })),
         // Nav items matching query
         ...navItems

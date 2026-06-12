@@ -48,6 +48,22 @@ export const CHANNEL_LABELS: Record<ConvChannel, string> = {
   manual: 'Manual',
 }
 
+export async function createConversation(input: {
+  contact_id?: string | null
+  contact_name?: string | null
+  channel?: ConvChannel
+  subject?: string | null
+}): Promise<Conversation> {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel: 'manual', ...input }),
+  })
+  if (!res.ok) throw new Error(`Failed to create conversation (${res.status})`)
+  const data = (await res.json()) as { conversation: Conversation }
+  return data.conversation
+}
+
 export async function fetchConversations(params?: {
   status?: string
   channel?: string

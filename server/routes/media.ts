@@ -1,7 +1,8 @@
 import type { Hono } from 'hono'
 import { createMedia, deleteMedia, isMediaKind, listMedia, updateMedia } from '../stores/media-store'
+import { generateImage, generateVideo, readMediaFile } from '../lib/media-generator'
 
-const BRAND_COLOR: Record<string, string> = { sc: '#2f6df6', hfm: '#7c6f9b', default: '#2f6df6' }
+const BRAND_COLOR: Record<string, string> = { sc: '#22c55e', hfm: '#a3843b', default: '#22c55e' }
 
 function esc(s: string): string {
   return s.replace(/[<>&]/g, (ch) => (ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : '&amp;'))
@@ -60,11 +61,43 @@ export function registerMedia(app: Hono): void {
     const aspect = typeof b.aspect === 'string' ? b.aspect : '1:1'
     const rec = createMedia({ kind, prompt: b.prompt.trim(), aspect, brand: typeof b.brand === 'string' ? b.brand : undefined })
 
+    // Generation order: real backends first (OpenRouter images / Replicate video),
+    // then the legacy Hermes hook, then the branded placeholder as a last resort.
+    const real = kind === 'video'
+      ? await generateVideo(rec.prompt, aspect)
+      : await generateImage(rec.prompt, aspect)
+
+    if ('url' in real) {
+      const updated = updateMedia(rec.id, { status: 'ready', url: real.url, provider: real.provider })
+      return c.json({ media: updated }, 201)
+    }
+
     const live = await tryHermesGenerate(rec.prompt, kind, aspect)
-    const updated = live
-      ? updateMedia(rec.id, { status: 'ready', url: live.url, provider: live.provider })
-      : updateMedia(rec.id, { status: 'ready', url: placeholderDataUrl(rec.prompt, kind, aspect, rec.brand), provider: 'placeholder' })
-    return c.json({ media: updated }, 201)
+    if (live) {
+      const updated = updateMedia(rec.id, { status: 'ready', url: live.url, provider: live.provider })
+      return c.json({ media: updated }, 201)
+    }
+
+    const updated = updateMedia(rec.id, {
+      status: 'ready',
+      url: placeholderDataUrl(rec.prompt, kind, aspect, rec.brand),
+      provider: 'placeholder',
+    })
+    return c.json({ media: updated, generation_error: real.error }, 201)
+  })
+
+  // Serve generated files from the data dir
+  app.get('/api/media/file/:name', (c) => {
+    const name = c.req.param('name')
+    const data = readMediaFile(name)
+    if (!data) return c.json({ error: 'Not found' }, 404)
+    const type = name.endsWith('.mp4') ? 'video/mp4'
+      : name.endsWith('.jpg') || name.endsWith('.jpeg') ? 'image/jpeg'
+      : name.endsWith('.webp') ? 'image/webp'
+      : 'image/png'
+    return new Response(new Uint8Array(data), {
+      headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable' },
+    })
   })
 
   app.delete('/api/media/:id', (c) =>

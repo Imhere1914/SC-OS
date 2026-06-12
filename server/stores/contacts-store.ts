@@ -26,6 +26,7 @@ export type ContactRecord = {
   owner: string | null
   unverified: boolean
   last_contacted_at: string | null
+  custom_fields: Record<string, string>   // arbitrary key→value pairs
   created_at: string
   updated_at: string
 }
@@ -89,6 +90,9 @@ function normalize(
     owner: c.owner ?? null,
     unverified: c.unverified === true,
     last_contacted_at: c.last_contacted_at ?? null,
+    custom_fields: (c.custom_fields && typeof c.custom_fields === 'object' && !Array.isArray(c.custom_fields))
+      ? c.custom_fields as Record<string, string>
+      : {},
     created_at: c.created_at,
     updated_at: c.updated_at,
   }

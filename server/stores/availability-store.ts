@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join } from 'path'
 
 const DATA_DIR = process.env.AIOS_DATA_DIR ?? join(process.env.HOME ?? '/tmp', '.ai-os')
@@ -16,7 +16,6 @@ function readJson<T>(file: string, fallback: T): T {
 
 function writeJson(file: string, data: unknown) {
   writeFileSync(dbPath(file) + '.tmp', JSON.stringify(data, null, 2))
-  const { renameSync } = require('fs') as typeof import('fs')
   renameSync(dbPath(file) + '.tmp', dbPath(file))
 }
 

@@ -3,14 +3,24 @@ import {
   createProject, deleteProject, getProject, isProjectPriority, isProjectStatus,
   listProjects, updateProject,
 } from '../stores/projects-store'
+import { listTasksForProject } from '../stores/project-tasks-store'
 
 export function registerProjects(app: Hono): void {
   app.get('/api/projects', (c) => {
     const u = new URL(c.req.url)
-    return c.json({ projects: listProjects({
+    const projects = listProjects({
       status: u.searchParams.get('status'), brand: u.searchParams.get('brand'),
       contact_id: u.searchParams.get('contact_id'),
-    }) })
+    })
+    // Enrich each project with live task counts
+    const enriched = projects.map(p => {
+      const tasks = listTasksForProject(p.id)
+      const task_count = tasks.length
+      const tasks_done = tasks.filter(t => t.status === 'done').length
+      const task_progress = task_count > 0 ? Math.round((tasks_done / task_count) * 100) : null
+      return { ...p, task_count, tasks_done, task_progress }
+    })
+    return c.json({ projects: enriched })
   })
   app.post('/api/projects', async (c) => {
     const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>

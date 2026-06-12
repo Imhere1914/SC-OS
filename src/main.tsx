@@ -7,6 +7,15 @@ import { BrandProvider } from './contexts/BrandContext'
 import { Toaster } from './components/toast'
 import './styles.css'
 
+// ── Service worker registration ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
+      // SW registration failed — non-fatal, app still works
+    })
+  })
+}
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 })

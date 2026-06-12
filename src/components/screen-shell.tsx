@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { RefreshIcon } from '@hugeicons/core-free-icons'
 import type { Chat01Icon } from '@hugeicons/core-free-icons'
+import { useBrand } from '@/contexts/BrandContext'
+import { cinema } from '@/lib/brand-cinema'
 
 /** Standard page header + scroll container shared by module screens. */
 export function ScreenShell({
@@ -21,12 +23,15 @@ export function ScreenShell({
   action?: ReactNode
   children: ReactNode
 }) {
+  const brand = useBrand()
+  const c = cinema(brand.id)
   return (
-    <div
-      className="h-full overflow-y-auto"
-      style={{ background: 'var(--theme-bg-grad)', backgroundAttachment: 'fixed' }}
-    >
-      <div className="mx-auto flex w-full max-w-[1060px] flex-col px-6 py-7">
+    <div className="h-full overflow-y-auto">
+
+      <div
+        className="cine-chrome-wash mx-auto flex w-full max-w-[1060px] flex-col px-6 py-7"
+        style={{ '--cine-accent': c.accent, '--cine-glow': c.glow } as React.CSSProperties}
+      >
 
         {/* Page header */}
         <header className="mb-5 flex items-center justify-between">

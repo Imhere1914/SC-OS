@@ -134,3 +134,16 @@ export async function deleteCampaign(id: string): Promise<void> {
   const res = await fetch(`${API}/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`Failed to delete campaign (${res.status})`)
 }
+
+export async function sendTestEmail(
+  id: string,
+  to: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API}/${id}/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to }),
+  })
+  const data = (await res.json()) as { ok?: boolean; error?: string }
+  return { ok: data.ok === true, error: data.error }
+}

@@ -17,4 +17,18 @@ export default defineConfig({
       '/api': 'http://localhost:8787',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@hugeicons')) return 'icons'
+            if (id.includes('recharts') || id.includes('d3')) return 'charts'
+            if (id.includes('@tanstack')) return 'tanstack'
+            return 'vendor'
+          }
+        },
+      },
+    },
+  },
 })

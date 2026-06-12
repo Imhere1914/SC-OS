@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 type Row = Record<string, string>
 
-const FIELD_OPTIONS = ['name', 'email', 'phone', 'company', 'stage', 'tags', 'notes', '(skip)'] as const
+const FIELD_OPTIONS = ['name', 'email', 'phone', 'company', 'city', 'stage', 'tags', 'notes', 'source', 'lead_score', '(skip)'] as const
 
 function parseCSV(text: string): { headers: string[]; rows: Row[] } {
   const lines = text.trim().split('\n').filter(l => l.trim())
@@ -42,21 +42,24 @@ function parseCSV(text: string): { headers: string[]; rows: Row[] } {
 function autoMap(headers: string[]): Record<string, string> {
   const map: Record<string, string> = {}
   headers.forEach(h => {
-    const lower = h.toLowerCase().trim()
-    if (lower.includes('name') && !lower.includes('company') && !lower.includes('last')) map[h] = 'name'
-    else if (lower.includes('first') || lower === 'firstname') map[h] = 'name'
+    const lower = h.toLowerCase().trim().replace(/[\s_-]+/g, '_')
+    if (['name', 'full_name', 'contact', 'fullname', 'first_name', 'firstname'].includes(lower)) map[h] = 'name'
+    else if (lower.includes('name') && !lower.includes('company') && !lower.includes('last')) map[h] = 'name'
     else if (lower.includes('email')) map[h] = 'email'
-    else if (lower.includes('phone') || lower.includes('mobile') || lower.includes('cell')) map[h] = 'phone'
-    else if (lower.includes('company') || lower.includes('org') || lower.includes('business')) map[h] = 'company'
-    else if (lower.includes('stage') || lower.includes('status')) map[h] = 'stage'
+    else if (['phone', 'mobile', 'cell', 'telephone', 'tel'].includes(lower) || lower.includes('phone') || lower.includes('mobile')) map[h] = 'phone'
+    else if (['company', 'organization', 'organisation', 'business', 'employer'].includes(lower) || lower.includes('company') || lower.includes('org')) map[h] = 'company'
+    else if (['city', 'location', 'town', 'region'].includes(lower)) map[h] = 'city'
+    else if (lower === 'stage' || lower === 'status') map[h] = 'stage'
     else if (lower.includes('tag')) map[h] = 'tags'
     else if (lower.includes('note')) map[h] = 'notes'
+    else if (lower === 'source' || lower === 'lead_source') map[h] = 'source'
+    else if (['lead_score', 'score', 'leadscore'].includes(lower)) map[h] = 'lead_score'
     else map[h] = '(skip)'
   })
   return map
 }
 
-async function importContacts(rows: Row[]): Promise<{ created: number; errors: Array<{ index: number; error: string }> }> {
+async function importContacts(rows: Row[]): Promise<{ imported: number; skipped: number; errors: string[] }> {
   const res = await fetch('/api/contacts/import', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -75,7 +78,7 @@ export function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () 
   const [rows, setRows] = useState<Row[]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [drag, setDrag] = useState(false)
-  const [result, setResult] = useState<{ created: number; errors: number } | null>(null)
+  const [result, setResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null)
 
   const importMutation = useMutation({
     mutationFn: async () => {
@@ -94,9 +97,9 @@ export function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () 
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ['contacts'] })
-      setResult({ created: data.created, errors: data.errors.length })
+      setResult({ imported: data.imported, skipped: data.skipped, errors: data.errors.length })
       setStep('done')
-      toast(`Imported ${data.created} contacts`)
+      toast(`Imported ${data.imported} contacts`)
     },
     onError: () => toast('Import failed', { type: 'error' }),
   })
@@ -250,8 +253,14 @@ export function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () 
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'var(--theme-accent-soft)' }}>
                 <HugeiconsIcon icon={Tick02Icon} size={24} className="text-[var(--theme-accent)]" />
               </div>
-              <p className="text-base font-bold text-[var(--theme-text)]">{result.created} contacts imported</p>
-              {result.errors > 0 && <p className="mt-1 text-xs text-[var(--theme-muted)]">{result.errors} rows skipped (missing name)</p>}
+              <p className="text-base font-bold text-[var(--theme-text)]">{result.imported} contacts imported</p>
+              {(result.skipped > 0 || result.errors > 0) && (
+                <p className="mt-1 text-xs text-[var(--theme-muted)]">
+                  {result.skipped > 0 && `${result.skipped} rows skipped (missing name)`}
+                  {result.skipped > 0 && result.errors > 0 && ' · '}
+                  {result.errors > 0 && `${result.errors} errors`}
+                </p>
+              )}
               <div className="mt-5 flex gap-2">
                 <button onClick={() => { reset(); onClose() }} className="rounded-lg px-4 py-1.5 text-xs font-medium text-white" style={{ background: 'var(--theme-accent)' }}>Done</button>
                 <button onClick={reset} className="rounded-lg px-3 py-1.5 text-xs text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]">Import another</button>

@@ -123,3 +123,62 @@ export async function deletePost(id: string): Promise<void> {
   const res = await fetch(`${API}/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`Failed to delete post (${res.status})`)
 }
+
+// ── Native channel publishing (per-brand, env-driven) ─────────────────────────
+
+/** Platforms that can be published directly to a connected account. */
+export type PublishPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok'
+
+export type ChannelStatus = Record<PublishPlatform, boolean>
+
+export type PlatformPublishResult = {
+  platform: PublishPlatform
+  ok: boolean
+  id?: string
+  url?: string
+  error?: string
+}
+
+export const PUBLISH_PLATFORMS: PublishPlatform[] = [
+  'facebook',
+  'instagram',
+  'linkedin',
+  'tiktok',
+]
+
+export async function fetchChannels(brand?: string): Promise<ChannelStatus> {
+  const qs = brand ? `?brand=${encodeURIComponent(brand)}` : ''
+  const res = await fetch(`${API}/channels${qs}`)
+  if (!res.ok) throw new Error(`Failed to load channels (${res.status})`)
+  const data = (await res.json()) as { channels?: Partial<ChannelStatus> }
+  return {
+    facebook: Boolean(data.channels?.facebook),
+    instagram: Boolean(data.channels?.instagram),
+    linkedin: Boolean(data.channels?.linkedin),
+    tiktok: Boolean(data.channels?.tiktok),
+  }
+}
+
+export async function publishToChannels(input: {
+  brand?: string
+  platforms: PublishPlatform[]
+  text: string
+  media_urls?: string[]
+  link?: string
+  post_id?: string
+}): Promise<{ post: SocialPost | null; results: PlatformPublishResult[] }> {
+  const res = await fetch(`${API}/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const data = (await res.json().catch(() => ({}))) as {
+    post?: SocialPost | null
+    results?: PlatformPublishResult[]
+    error?: string
+  }
+  if (res.status === 400 || (!data.results && data.error)) {
+    throw new Error(data.error || `Failed to publish (${res.status})`)
+  }
+  return { post: data.post ?? null, results: data.results ?? [] }
+}

@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join } from 'path'
 
 const DATA_DIR = process.env.AIOS_DATA_DIR ?? join(process.env.HOME ?? '/tmp', '.ai-os')
@@ -16,7 +16,6 @@ function readJson<T>(file: string, fallback: T): T {
 
 function writeJson(file: string, data: unknown) {
   writeFileSync(dbPath(file) + '.tmp', JSON.stringify(data, null, 2))
-  const { renameSync } = require('fs') as typeof import('fs')
   renameSync(dbPath(file) + '.tmp', dbPath(file))
 }
 
@@ -85,4 +84,35 @@ export function deleteForm(id: string, brand?: string): boolean {
   if (next.length === forms.length) return false
   writeJson(file(brand), next)
   return true
+}
+
+// ── Form submissions log ─────────────────────────────────────────────────────
+
+export interface FormSubmission {
+  id: string
+  form_id: string
+  brand?: string
+  fields: Record<string, string>   // field label → value
+  contact_id?: string              // matched/created contact
+  submitted_at: string
+}
+
+function subFile(brand?: string) {
+  return brand ? `form-submissions-${brand}.json` : 'form-submissions.json'
+}
+
+export function listSubmissions(formId: string, brand?: string): FormSubmission[] {
+  const all = readJson<FormSubmission[]>(subFile(brand), [])
+  return all.filter(s => s.form_id === formId)
+}
+
+export function appendSubmission(data: Omit<FormSubmission, 'id' | 'submitted_at'>): FormSubmission {
+  const all = readJson<FormSubmission[]>(subFile(data.brand), [])
+  const sub: FormSubmission = {
+    ...data,
+    id: crypto.randomUUID(),
+    submitted_at: new Date().toISOString(),
+  }
+  writeJson(subFile(data.brand), [sub, ...all].slice(0, 5000)) // cap at 5k per brand
+  return sub
 }

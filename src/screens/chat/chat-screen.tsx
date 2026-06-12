@@ -44,7 +44,13 @@ function RecordingVisualizer({ active }: { active: boolean }) {
 export function ChatScreen() {
   const brand = useBrand()
   const navigate = useNavigate()
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const stored = localStorage.getItem('hermes-chat-history')
+      if (stored) return JSON.parse(stored) as ChatMessage[]
+    } catch { /* ignore */ }
+    return []
+  })
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [listening, setListening] = useState(false)
@@ -72,6 +78,13 @@ export function ChatScreen() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, busy])
+
+  // Persist chat history to localStorage (shared with HermesFloat)
+  useEffect(() => {
+    try {
+      localStorage.setItem('hermes-chat-history', JSON.stringify(messages.slice(-100)))
+    } catch { /* ignore */ }
+  }, [messages])
 
   function stopSpeaking() {
     if (audioRef.current) {

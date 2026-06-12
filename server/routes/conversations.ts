@@ -4,6 +4,7 @@ import {
   addMessage, approveDraft, createConversation, getConversation,
   isConvStatus, isMessageRole, listConversations, updateConversation,
 } from '../stores/conversations-store'
+import { createContact } from '../stores/contacts-store'
 
 function brandDraft(name: string | null): string {
   const brand = (process.env.BRAND ?? '').toLowerCase()
@@ -63,6 +64,30 @@ export function registerConversations(app: Hono): void {
       subject: b.subject === null || typeof b.subject === 'string' ? (b.subject as string | null) : undefined,
     })
     return conv ? c.json({ conversation: conv }) : c.json({ error: 'Not found' }, 404)
+  })
+
+  // Public web lead capture (published Pages lead form posts here)
+  app.post('/api/webchat', async (c) => {
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+    const name = typeof b.name === 'string' ? b.name.trim().slice(0, 200) : ''
+    const email = typeof b.email === 'string' ? b.email.trim().slice(0, 320) : ''
+    const message = typeof b.message === 'string' ? b.message.trim().slice(0, 5000) : ''
+    if (!email && !message) return c.json({ error: 'message or email required' }, 400)
+    try {
+      const contact = createContact({
+        name: name || (email ? email.split('@')[0] : 'Web visitor'),
+        email: email || undefined,
+        stage: 'lead',
+        source: 'webchat',
+        tags: ['website-lead'],
+        notes: message || undefined,
+        unverified: true,
+      })
+      void triggerAutomations('new_contact', { contact_id: contact.id })
+      return c.json({ ok: true, contact_id: contact.id }, 201)
+    } catch {
+      return c.json({ error: 'Could not submit' }, 500)
+    }
   })
 
   // Agent draft (template for now; wired to the live agent in the chat phase)

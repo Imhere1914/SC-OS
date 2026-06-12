@@ -5,8 +5,10 @@ import { listAppointments } from '../stores/appointments-store'
 import { listCampaigns } from '../stores/campaigns-store'
 import { listPosts } from '../stores/social-store'
 import { listProjects } from '../stores/projects-store'
+import { listAllTasks } from '../stores/project-tasks-store'
 import { listForms } from '../stores/forms-store'
 import { listInvoices } from '../stores/invoices-store'
+import { readRuns } from '../stores/automations-store'
 
 export function registerStats(app: Hono): void {
   app.get('/api/stats', (c) => {
@@ -70,6 +72,19 @@ export function registerStats(app: Hono): void {
     // Projects
     const activeProjects = projects.filter(p => p.status === 'active' && bf((p as { brand?: string }).brand)).length
 
+    // Tasks due today
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const allTasks = listAllTasks()
+    const tasksDueToday = allTasks.filter(t => t.due_date === todayStr && t.status !== 'done').length
+    const tasksOverdue = allTasks.filter(t => t.due_date && t.due_date < todayStr && t.status !== 'done').length
+
+    // Automations run this week
+    const runs = readRuns()
+    const automationsThisWeek = runs.filter(r => {
+      const t = r.ran_at ? Date.parse(r.ran_at) : NaN
+      return !Number.isNaN(t) && t > now - week
+    }).length
+
     return c.json({
       pipeline,
       contacts: {
@@ -97,6 +112,13 @@ export function registerStats(app: Hono): void {
       projects: {
         active: activeProjects,
       },
+      tasks: {
+        dueToday: tasksDueToday,
+        overdue: tasksOverdue,
+      },
+      automations: {
+        runsThisWeek: automationsThisWeek,
+      },
       forms: {
         total: forms.length,
         active: forms.filter((f) => f.status === 'active').length,
@@ -108,5 +130,62 @@ export function registerStats(app: Hono): void {
         total: invoices.length,
       },
     })
+  })
+
+  // ── Recent Activity feed ──────────────────────────────────────────────────
+  app.get('/api/activity', (c) => {
+    const brand = new URL(c.req.url).searchParams.get('brand') ?? process.env.BRAND ?? null
+    const bf = (b?: string | null) => !brand || brand === 'default' ? true : b === brand
+
+    type ActivityItem = {
+      id: string; type: string; title: string; sub: string
+      link: string; at: string
+    }
+    const items: ActivityItem[] = []
+
+    // Recent contacts
+    listContacts({}).filter(c => bf((c as { brand?: string }).brand)).forEach(c => {
+      if (c.created_at) items.push({
+        id: `contact-${c.id}`, type: 'contact',
+        title: c.name, sub: `New contact · ${c.stage}`,
+        link: `/contacts/${c.id}`, at: c.created_at,
+      })
+    })
+
+    // Recent conversations
+    listConversations({}).filter(c => bf((c as { brand?: string }).brand)).forEach(c => {
+      const at = (c as { created_at?: string }).created_at ?? ''
+      if (at) items.push({
+        id: `conv-${c.id}`, type: 'conversation',
+        title: c.contact_name ?? 'New conversation',
+        sub: `${c.channel} · ${c.status}`,
+        link: '/conversations', at,
+      })
+    })
+
+    // Recent appointments
+    listAppointments({}).filter(a => bf((a as { brand?: string }).brand)).forEach(a => {
+      const at = (a as { created_at?: string }).created_at ?? a.starts_at ?? ''
+      if (at) items.push({
+        id: `appt-${a.id}`, type: 'appointment',
+        title: a.contact_name ?? 'Appointment',
+        sub: a.starts_at ? `Booked for ${new Date(a.starts_at).toLocaleDateString()}` : 'Scheduled',
+        link: '/appointments', at,
+      })
+    })
+
+    // Recent automation runs
+    readRuns().forEach(r => {
+      items.push({
+        id: `run-${r.id}`, type: 'automation',
+        title: r.automation_name,
+        sub: `${r.status} · ${r.actions_run} action${r.actions_run !== 1 ? 's' : ''}`,
+        link: '/automations', at: r.ran_at,
+      })
+    })
+
+    // Sort newest-first, cap at 20
+    items.sort((a, b) => b.at.localeCompare(a.at))
+    return c.json({ items: items.slice(0, 20) })
   })
 }

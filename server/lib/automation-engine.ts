@@ -151,6 +151,118 @@ function summarize(ctx: TriggerContext): string {
   return parts.join(' · ') || 'No context'
 }
 
+// ─── Event-bus bridge ─────────────────────────────────────────────────────────
+
+/**
+ * Map EventBus event types to the existing TriggerEvent vocabulary, then fire
+ * triggerAutomations so every existing automation still works.
+ */
+function registerEventBusListeners(): void {
+  // Avoid loading event-bus at module level (circular-dep risk); import lazily.
+  void import('./event-bus').then(({ eventBus }) => {
+    eventBus.on('deal.won', ev => {
+      void triggerAutomations('deal_won', {
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        deal_id: ev.entity_id,
+        deal_title: String(ev.data['title'] ?? ''),
+        deal_value: ev.data['value'] != null ? Number(ev.data['value']) : undefined,
+      })
+    })
+
+    eventBus.on('deal.created', ev => {
+      void triggerAutomations('deal_created', {
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        deal_id: ev.entity_id,
+        deal_title: String(ev.data['title'] ?? ''),
+        deal_value: ev.data['value'] != null ? Number(ev.data['value']) : undefined,
+      })
+    })
+
+    eventBus.on('deal.stage_changed', ev => {
+      void triggerAutomations('deal_stage_changed', {
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        deal_id: ev.entity_id,
+        deal_title: String(ev.data['title'] ?? ''),
+        new_stage: String(ev.data['new_stage'] ?? ''),
+        previous_stage: String(ev.data['previous_stage'] ?? ''),
+      })
+    })
+
+    eventBus.on('invoice.paid', ev => {
+      void triggerAutomations('invoice_paid', {
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        contact_email: ev.data['contact_email'] != null ? String(ev.data['contact_email']) : undefined,
+        contact_id: ev.data['contact_id'] != null ? String(ev.data['contact_id']) : undefined,
+        invoice_number: String(ev.data['invoice_number'] ?? ''),
+        invoice_total: ev.data['total'] != null ? Number(ev.data['total']) : undefined,
+      })
+    })
+
+    eventBus.on('invoice.created', ev => {
+      void triggerAutomations('invoice_created', {
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        contact_email: ev.data['contact_email'] != null ? String(ev.data['contact_email']) : undefined,
+        contact_id: ev.data['contact_id'] != null ? String(ev.data['contact_id']) : undefined,
+        invoice_number: String(ev.data['invoice_number'] ?? ''),
+        invoice_total: ev.data['total'] != null ? Number(ev.data['total']) : undefined,
+      })
+    })
+
+    eventBus.on('appointment.booked', ev => {
+      void triggerAutomations('new_appointment', {
+        appointment_id: ev.entity_id,
+        contact_id: ev.data['contact_id'] != null ? String(ev.data['contact_id']) : undefined,
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        appointment_title: String(ev.data['title'] ?? ''),
+      })
+    })
+
+    eventBus.on('appointment.completed', ev => {
+      void triggerAutomations('appointment_completed' as TriggerEvent, {
+        appointment_id: ev.entity_id,
+        contact_id: ev.data['contact_id'] != null ? String(ev.data['contact_id']) : undefined,
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        appointment_title: String(ev.data['title'] ?? ''),
+      })
+    })
+
+    eventBus.on('contact.created', ev => {
+      void triggerAutomations('new_contact', {
+        contact_id: ev.entity_id,
+        contact_name: String(ev.data['name'] ?? ''),
+        contact_email: ev.data['email'] != null ? String(ev.data['email']) : undefined,
+      })
+    })
+
+    eventBus.on('form.submitted', ev => {
+      void triggerAutomations('form_submitted', {
+        contact_id: ev.data['contact_id'] != null ? String(ev.data['contact_id']) : undefined,
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        contact_email: ev.data['contact_email'] != null ? String(ev.data['contact_email']) : undefined,
+        form_id: ev.entity_id,
+        form_name: String(ev.data['form_name'] ?? ''),
+      })
+    })
+
+    eventBus.on('proposal.signed', ev => {
+      void triggerAutomations('proposal_signed' as TriggerEvent, {
+        contact_id: ev.data['contact_id'] != null ? String(ev.data['contact_id']) : undefined,
+        contact_name: String(ev.data['contact_name'] ?? ''),
+        contact_email: ev.data['contact_email'] != null ? String(ev.data['contact_email']) : undefined,
+        proposal_id: ev.entity_id,
+        proposal_title: String(ev.data['title'] ?? ''),
+      })
+    })
+  })
+}
+
+/**
+ * Call once at server startup to activate the event-bus → automation bridge.
+ */
+export function initAutomationEngine(_brand?: string): void {
+  registerEventBusListeners()
+}
+
 // ─── Main entry point ────────────────────────────────────────────────────────
 
 export async function triggerAutomations(event: TriggerEvent, ctx: TriggerContext): Promise<void> {

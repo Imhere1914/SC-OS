@@ -62,10 +62,26 @@ export function registerCampaigns(app: Hono): void {
       const recipients = resolveRecipients(campaign.audience)
       updateCampaign(id, { status: 'sending', stats: { recipients: recipients.length, sent: 0, failed: 0 } })
       const brandName = campaign.brand === 'hfm' ? 'Holistic Functional Care' : campaign.brand === 'sc' ? 'Simple Connect' : 'AI OS'
+      const BASE_URL = process.env.BASE_URL || 'http://localhost:4000'
       let sent = 0, failed = 0
       for (const ct of recipients) {
         if (!ct.email) continue
-        const r = await sendEmail({ to: ct.email, subject: campaign.subject, html: renderCampaignHtml(campaign.body, { brandName }) })
+        // Inject tracking pixel and wrap links per-contact
+        let bodyHtml = renderCampaignHtml(campaign.body, { brandName })
+        // Wrap href="http..." links with click tracker
+        bodyHtml = bodyHtml.replace(
+          /href="(https?:\/\/[^"]+)"/g,
+          (_match: string, url: string) =>
+            `href="${BASE_URL}/track/click/${id}/${ct.id}?url=${encodeURIComponent(url)}"`,
+        )
+        // Append open pixel — insert before </body> or append at end
+        const pixelTag = `<img src="${BASE_URL}/track/open/${id}/${ct.id}" width="1" height="1" style="display:none" />`
+        if (/<\/body>/i.test(bodyHtml)) {
+          bodyHtml = bodyHtml.replace(/<\/body>/i, `${pixelTag}</body>`)
+        } else {
+          bodyHtml += pixelTag
+        }
+        const r = await sendEmail({ to: ct.email, subject: campaign.subject, html: bodyHtml })
         r.ok ? sent++ : failed++
       }
       const updated = updateCampaign(id, {
@@ -87,4 +103,28 @@ export function registerCampaigns(app: Hono): void {
   })
   app.delete('/api/campaigns/:id', (c) =>
     deleteCampaign(c.req.param('id')) ? c.json({ ok: true }) : c.json({ error: 'Not found' }, 404))
+
+  // ── Test send — send to a single email address ──────────────────────────────
+  app.post('/api/campaigns/:id/test', async (c) => {
+    const id = c.req.param('id')
+    const campaign = getCampaign(id)
+    if (!campaign) return c.json({ error: 'Not found' }, 404)
+
+    const b = (await c.req.json().catch(() => ({}))) as { to?: string }
+    const to = b.to?.trim()
+    if (!to || !to.includes('@')) return c.json({ error: 'Valid email address required' }, 400)
+
+    if (!isEmailConfigured()) {
+      return c.json({ ok: false, error: 'Email not configured — set RESEND_API_KEY and CAMPAIGN_FROM_EMAIL' }, 502)
+    }
+
+    const brandName = campaign.brand === 'hfm' ? 'Holistic Functional Care' : campaign.brand === 'sc' ? 'Simple Connect' : 'AI OS'
+    const body = campaign.body
+      .replace(/\{\{contact_name\}\}/g, 'Test User')
+      .replace(/\{\{contact_email\}\}/g, to)
+      .replace(/\{\{contact_company\}\}/g, 'Test Company')
+
+    const r = await sendEmail({ to, subject: `[TEST] ${campaign.subject}`, html: renderCampaignHtml(body, { brandName }) })
+    return c.json({ ok: r.ok, error: r.ok ? undefined : 'Send failed — check Resend logs' })
+  })
 }

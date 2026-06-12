@@ -5,15 +5,18 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Link } from '@tanstack/react-router'
 import {
   Add01Icon,
+  CheckmarkCircle01Icon,
+  Clock01Icon,
   Delete01Icon,
+  FileEditIcon,
   Invoice01Icon,
+  LinkSquare02Icon,
   Mail02Icon,
   Money01Icon,
   PencilEdit02Icon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons'
 import {
-  STATUS_BG,
   STATUS_COLORS,
   STATUS_LABELS,
   createInvoice,
@@ -41,6 +44,77 @@ function newLineItem(): Omit<LineItem, 'id'> {
 }
 
 type LineItemDraft = Omit<LineItem, 'id'> & { _key: string }
+
+// ── Design tokens (shared vocabulary with Payroll / Mission Control) ─────────
+
+const ACCENT_GRADIENT = 'linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 65%, #000))'
+const ACCENT_GLOW = '0 2px 8px color-mix(in srgb, var(--theme-accent) 35%, transparent)'
+
+const primaryBtnCls = 'flex items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-semibold text-white transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0'
+const primaryBtnStyle: React.CSSProperties = { background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }
+
+function isOverdue(inv: InvoiceRecord): boolean {
+  return inv.status === 'sent' && !!inv.due_date && new Date(inv.due_date).getTime() < Date.now()
+}
+
+// Status as colored dot + soft tinted badge; overdue rendered red
+function InvoiceStatusBadge({ invoice }: { invoice: InvoiceRecord }) {
+  const overdue = isOverdue(invoice)
+  const color = overdue ? '#ef4444' : invoice.status === 'draft' ? '#94a3b8' : STATUS_COLORS[invoice.status]
+  const label = overdue ? 'Overdue' : STATUS_LABELS[invoice.status]
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      style={{
+        background: `color-mix(in srgb, ${color} 12%, var(--theme-card))`,
+        color,
+        border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
+  )
+}
+
+// Gradient-accented stat card
+function StatCard({ label, value, sub, color, icon }: {
+  label: string
+  value: string
+  sub?: string
+  color: string
+  icon: typeof Money01Icon
+}) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-xl border p-4 transition-all hover:-translate-y-1 hover:shadow-md"
+      style={{
+        background: 'var(--theme-card)',
+        borderColor: 'var(--theme-border)',
+        backdropFilter: 'blur(8px)',
+      }}
+    >
+      <div
+        className="absolute left-0 top-0 h-full w-[3px] rounded-l-xl"
+        style={{ background: `linear-gradient(180deg, ${color}, color-mix(in srgb, ${color} 40%, transparent))` }}
+      />
+      <div className="pl-1.5">
+        <span
+          className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{
+            background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 65%, #000))`,
+            boxShadow: `0 2px 8px color-mix(in srgb, ${color} 35%, transparent)`,
+          }}
+        >
+          <HugeiconsIcon icon={icon} size={15} className="text-white" />
+        </span>
+        <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--theme-muted)]">{label}</p>
+        <p className="mt-1 text-[22px] font-bold leading-none tabular-nums text-[var(--theme-text)]">{value}</p>
+        {sub && <p className="mt-1 text-[11px] text-[var(--theme-muted)]">{sub}</p>}
+      </div>
+    </div>
+  )
+}
 
 // ── Invoice dialog ───────────────────────────────────────────────────────────
 function InvoiceDialog({
@@ -113,151 +187,175 @@ function InvoiceDialog({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      style={{ backdropFilter: 'blur(2px)' }}
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-sm font-semibold text-[var(--theme-text)]">
-          {isEdit ? 'Edit Invoice' : 'New Invoice'}
-        </h2>
-
-        {/* Contact */}
-        <div className="mb-4 grid grid-cols-2 gap-3">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-[var(--theme-border)] px-5 py-3.5">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
+          >
+            <HugeiconsIcon icon={Invoice01Icon} size={16} className="text-white" />
+          </span>
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Client name *</label>
-            <input
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Client email</label>
-            <input
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Due date</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Tax rate (%)</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              value={taxRate}
-              onChange={(e) => setTaxRate(Number(e.target.value))}
-              className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-            />
+            <h2 className="text-[14px] font-semibold text-[var(--theme-text)]">
+              {isEdit ? 'Edit Invoice' : 'New Invoice'}
+            </h2>
+            <p className="text-[11px] text-[var(--theme-muted)]">
+              {isEdit ? invoice?.invoice_number : 'Bill a client for products or services'}
+            </p>
           </div>
         </div>
 
-        {/* Line items */}
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-[11px] font-medium text-[var(--theme-muted)]">Line items</label>
-            <button
-              onClick={addItem}
-              className="flex items-center gap-1 rounded-lg border border-[var(--theme-border)] px-2 py-1 text-[10px] font-medium text-[var(--theme-accent)] hover:bg-[var(--theme-hover)]"
+        <div className="p-5">
+          {/* Contact */}
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--theme-muted)]">Client &amp; Terms</p>
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Client name *</label>
+              <input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Client email</label>
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Due date</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Tax rate (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={taxRate}
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+                className="w-full rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+              />
+            </div>
+          </div>
+
+          {/* Line items */}
+          <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--theme-muted)]">Line items</label>
+              <button
+                onClick={addItem}
+                className="flex items-center gap-1 rounded-lg border border-[var(--theme-border)] px-2 py-1 text-[10px] font-medium text-[var(--theme-accent)] transition-colors hover:border-[var(--theme-accent)] hover:bg-[var(--theme-hover)]"
+              >
+                <HugeiconsIcon icon={Add01Icon} size={10} /> Add item
+              </button>
+            </div>
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div key={item._key} className="flex items-center gap-2">
+                  <input
+                    value={item.description}
+                    onChange={(e) => updateItem(item._key, { description: e.target.value })}
+                    placeholder="Description"
+                    className="min-w-0 flex-1 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2.5 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => updateItem(item._key, { quantity: Number(e.target.value) })}
+                    className="w-14 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2 py-1.5 text-center text-xs tabular-nums text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+                    title="Quantity"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.unit_price}
+                    onChange={(e) => updateItem(item._key, { unit_price: Number(e.target.value) })}
+                    className="w-20 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2 py-1.5 text-right text-xs tabular-nums text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+                    title="Unit price"
+                  />
+                  <button
+                    onClick={() => removeItem(item._key)}
+                    disabled={items.length <= 1}
+                    className="rounded-lg p-1 transition-colors hover:bg-[var(--theme-hover)] disabled:opacity-30"
+                  >
+                    <HugeiconsIcon icon={Delete01Icon} size={12} style={{ color: 'var(--theme-danger)' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Totals */}
+            <div
+              className="mt-3 space-y-1 rounded-xl border p-3 text-xs"
+              style={{
+                borderColor: 'color-mix(in srgb, var(--theme-accent) 25%, var(--theme-border))',
+                background: 'color-mix(in srgb, var(--theme-accent) 5%, var(--theme-card))',
+              }}
             >
-              <HugeiconsIcon icon={Add01Icon} size={10} /> Add item
+              <div className="flex justify-between text-[var(--theme-muted)]">
+                <span>Subtotal</span>
+                <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+              </div>
+              {taxRate > 0 && (
+                <div className="flex justify-between text-[var(--theme-muted)]">
+                  <span>Tax ({taxRate}%)</span>
+                  <span className="tabular-nums">{formatCurrency(taxAmt)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-1.5 text-[13px] font-bold text-[var(--theme-text)]" style={{ borderColor: 'color-mix(in srgb, var(--theme-accent) 25%, var(--theme-border))' }}>
+                <span>Total</span>
+                <span className="tabular-nums">{formatCurrency(total)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="mb-4">
+            <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Payment terms, bank details, etc."
+              className="w-full resize-none rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-2 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="rounded-xl px-4 py-2 text-xs font-medium text-[var(--theme-muted)] transition-colors hover:bg-[var(--theme-hover)]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!contactName.trim() || isSubmitting}
+              className={primaryBtnCls}
+              style={primaryBtnStyle}
+            >
+              {isSubmitting ? 'Saving…' : isEdit ? 'Update Invoice' : 'Create Invoice'}
             </button>
           </div>
-          <div className="space-y-2">
-            {items.map((item) => (
-              <div key={item._key} className="flex items-center gap-2">
-                <input
-                  value={item.description}
-                  onChange={(e) => updateItem(item._key, { description: e.target.value })}
-                  placeholder="Description"
-                  className="min-w-0 flex-1 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2.5 py-1.5 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  value={item.quantity}
-                  onChange={(e) => updateItem(item._key, { quantity: Number(e.target.value) })}
-                  className="w-14 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2 py-1.5 text-center text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-                  title="Quantity"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={item.unit_price}
-                  onChange={(e) => updateItem(item._key, { unit_price: Number(e.target.value) })}
-                  className="w-20 rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-2 py-1.5 text-right text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-                  title="Unit price"
-                />
-                <button
-                  onClick={() => removeItem(item._key)}
-                  disabled={items.length <= 1}
-                  className="rounded-lg p-1 hover:bg-[var(--theme-hover)] disabled:opacity-30"
-                >
-                  <HugeiconsIcon icon={Delete01Icon} size={12} style={{ color: 'var(--theme-danger)' }} />
-                </button>
-              </div>
-            ))}
-          </div>
-          {/* Totals */}
-          <div className="mt-3 space-y-1 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] p-3 text-xs">
-            <div className="flex justify-between text-[var(--theme-muted)]">
-              <span>Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
-            {taxRate > 0 && (
-              <div className="flex justify-between text-[var(--theme-muted)]">
-                <span>Tax ({taxRate}%)</span>
-                <span>{formatCurrency(taxAmt)}</span>
-              </div>
-            )}
-            <div className="flex justify-between border-t border-[var(--theme-border)] pt-1 font-semibold text-[var(--theme-text)]">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="mb-4">
-          <label className="mb-1 block text-[11px] font-medium text-[var(--theme-muted)]">Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="Payment terms, bank details, etc."
-            className="w-full resize-none rounded-lg border border-[var(--theme-border)] bg-[var(--theme-input)] px-3 py-2 text-xs text-[var(--theme-text)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!contactName.trim() || isSubmitting}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: 'var(--theme-accent)' }}
-          >
-            {isSubmitting ? 'Saving…' : isEdit ? 'Update Invoice' : 'Create Invoice'}
-          </button>
         </div>
       </div>
     </div>
@@ -325,155 +423,229 @@ export function PaymentsScreen() {
     <div className="min-h-full overflow-y-auto bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 py-6 pb-[calc(var(--tabbar-h,80px)+1.5rem)] sm:px-6 lg:px-8">
         {/* Header */}
-        <header className="rounded-2xl border border-primary-200 bg-primary-50/85 p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={Money01Icon} size={18} className="text-[var(--theme-accent)]" />
-              <h1 className="text-base font-semibold text-[var(--theme-text)]">Payments</h1>
-              {invoicesQuery.data && (
-                <span className="ml-1 text-xs text-[var(--theme-muted)]">({allInvoices.length})</span>
-              )}
-            </div>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--theme-accent)' }}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}
             >
-              <HugeiconsIcon icon={Add01Icon} size={14} />
-              New Invoice
+              <HugeiconsIcon icon={Money01Icon} size={18} className="text-white" />
+            </span>
+            <div>
+              <h1 className="text-[22px] font-bold leading-tight text-[var(--theme-text)]">Payments</h1>
+              <p className="mt-0.5 truncate text-[12px] text-[var(--theme-muted)]">
+                {invoicesQuery.data
+                  ? `${allInvoices.length} invoice${allInvoices.length !== 1 ? 's' : ''} · track billing and payments`
+                  : 'Track billing and payments'}
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setShowCreate(true)} className={primaryBtnCls} style={primaryBtnStyle}>
+            <HugeiconsIcon icon={Add01Icon} size={14} />
+            New Invoice
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Total Paid"
+            value={formatCurrency(stats.paid)}
+            sub="collected revenue"
+            color="#10b981"
+            icon={CheckmarkCircle01Icon}
+          />
+          <StatCard
+            label="Outstanding"
+            value={formatCurrency(stats.outstanding)}
+            sub="awaiting payment"
+            color="#3b82f6"
+            icon={Clock01Icon}
+          />
+          <StatCard
+            label="Drafts"
+            value={String(stats.draft)}
+            sub="not yet sent"
+            color="#94a3b8"
+            icon={FileEditIcon}
+          />
+        </div>
+
+        {/* Status filter — segmented control */}
+        <div className="flex w-fit gap-1 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-hover)] p-1">
+          {STATUS_FILTERS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all',
+                statusFilter === s ? 'shadow-sm' : 'text-[var(--theme-muted)] hover:text-[var(--theme-text)]',
+              )}
+              style={statusFilter === s ? {
+                background: 'color-mix(in srgb, var(--theme-accent) 14%, var(--theme-card))',
+                color: 'var(--theme-accent)',
+              } : undefined}
+            >
+              {s === 'all' ? 'All' : STATUS_LABELS[s]}
+              <span className="ml-1 opacity-60 tabular-nums">
+                {s === 'all' ? allInvoices.length : allInvoices.filter((i) => i.status === s).length}
+              </span>
             </button>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {[
-              { label: 'Total paid', value: formatCurrency(stats.paid), color: '#22c55e' },
-              { label: 'Outstanding', value: formatCurrency(stats.outstanding), color: '#3b82f6' },
-              { label: 'Drafts', value: String(stats.draft), color: 'var(--theme-muted)' },
-            ].map((s) => (
-              <div key={s.label} className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg)] p-3">
-                <p className="text-[11px] text-[var(--theme-muted)]">{s.label}</p>
-                <p className="mt-0.5 text-base font-bold" style={{ color: s.color }}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Status filter */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {STATUS_FILTERS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={cn(
-                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                  statusFilter === s
-                    ? 'border-transparent text-white'
-                    : 'border-[var(--theme-border)] text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]',
-                )}
-                style={statusFilter === s ? { background: 'var(--theme-accent)' } : undefined}
-              >
-                {s === 'all' ? 'All' : STATUS_LABELS[s]}
-                <span className="ml-1 opacity-60">
-                  ({s === 'all' ? allInvoices.length : allInvoices.filter((i) => i.status === s).length})
-                </span>
-              </button>
-            ))}
-          </div>
-        </header>
+          ))}
+        </div>
 
         {/* Invoice list */}
         <div className="space-y-2">
           {invoicesQuery.isLoading ? (
-            <div className="flex items-center justify-center py-12 text-sm text-[var(--theme-muted)]">
-              Loading invoices…
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-xl border bg-[var(--theme-card)]"
+                  style={{ borderColor: 'var(--theme-border)' }}
+                />
+              ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-[var(--theme-muted)]">
-              <HugeiconsIcon icon={Invoice01Icon} size={32} className="mb-3 opacity-40" />
-              <p className="text-sm font-medium">No invoices{statusFilter !== 'all' ? ` with status "${STATUS_LABELS[statusFilter as InvoiceStatus]}"` : ''}</p>
-              <p className="mt-1 text-xs">Create invoices and track payments from clients.</p>
+            <div
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border py-14 text-center"
+              style={{ background: 'var(--theme-card)', borderColor: 'var(--theme-border)' }}
+            >
+              <span
+                className="flex h-12 w-12 items-center justify-center rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 18%, var(--theme-card)), color-mix(in srgb, #000 14%, var(--theme-card)))',
+                  color: 'var(--theme-accent)',
+                }}
+              >
+                <HugeiconsIcon icon={Invoice01Icon} size={22} />
+              </span>
+              <p className="text-[13px] font-semibold text-[var(--theme-text)]">
+                No invoices{statusFilter !== 'all' ? ` with status "${STATUS_LABELS[statusFilter as InvoiceStatus]}"` : ''}
+              </p>
+              <p className="text-[11px] text-[var(--theme-muted)]">Create invoices and track payments from clients.</p>
+              <button onClick={() => setShowCreate(true)} className={cn(primaryBtnCls, 'mt-2')} style={primaryBtnStyle}>
+                <HugeiconsIcon icon={Add01Icon} size={13} /> New Invoice
+              </button>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              {filtered.map((inv) => (
-                <motion.div
-                  key={inv.id}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-                          style={{
-                            background: STATUS_BG[inv.status],
-                            color: STATUS_COLORS[inv.status],
-                          }}
-                        >
-                          {STATUS_LABELS[inv.status]}
-                        </span>
-                        <span className="font-mono text-[11px] text-[var(--theme-muted)]">{inv.invoice_number}</span>
-                        <h3 className="truncate text-sm font-medium text-[var(--theme-text)]">{inv.contact_name}</h3>
+              {filtered.map((inv) => {
+                const overdue = isOverdue(inv)
+                return (
+                  <motion.div
+                    key={inv.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="group rounded-xl border p-4 transition-all hover:-translate-y-px hover:shadow-md"
+                    style={{
+                      background: 'var(--theme-card)',
+                      borderColor: overdue
+                        ? 'color-mix(in srgb, #ef4444 30%, var(--theme-border))'
+                        : 'var(--theme-border)',
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                          <InvoiceStatusBadge invoice={inv} />
+                          <span className="font-mono text-[11px] text-[var(--theme-muted)]">{inv.invoice_number}</span>
+                          <h3 className="truncate text-sm font-semibold text-[var(--theme-text)]">{inv.contact_name}</h3>
+                        </div>
+                        <p className="text-[20px] font-bold leading-none tabular-nums text-[var(--theme-text)]">
+                          {formatCurrency(inv.total)}
+                        </p>
+                        <p className="mt-1.5 text-[11px] text-[var(--theme-muted)]">
+                          {inv.line_items.length} item{inv.line_items.length !== 1 ? 's' : ''}
+                          {inv.due_date && (
+                            <>
+                              {' · '}
+                              <span className={overdue ? 'font-semibold text-red-500' : undefined}>
+                                Due {new Date(inv.due_date).toLocaleDateString()}
+                              </span>
+                            </>
+                          )}
+                          {inv.paid_at && (
+                            <>
+                              {' · '}
+                              <span style={{ color: '#10b981' }}>Paid {new Date(inv.paid_at).toLocaleDateString()}</span>
+                            </>
+                          )}
+                        </p>
                       </div>
-                      <p className="text-lg font-bold text-[var(--theme-text)]">{formatCurrency(inv.total)}</p>
-                      <p className="mt-0.5 text-[11px] text-[var(--theme-muted)]">
-                        {inv.line_items.length} item{inv.line_items.length !== 1 ? 's' : ''}
-                        {inv.due_date && ` · Due ${new Date(inv.due_date).toLocaleDateString()}`}
-                        {inv.paid_at && ` · Paid ${new Date(inv.paid_at).toLocaleDateString()}`}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {inv.status === 'draft' && (
-                        <button
-                          onClick={() => markAs(inv, 'sent')}
-                          className="flex items-center gap-1 rounded-lg border border-[var(--theme-border)] px-2 py-1 text-[10px] font-medium text-[var(--theme-muted)] hover:bg-[var(--theme-hover)]"
-                          title="Mark as sent"
+                      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                        {inv.status === 'draft' && (
+                          <button
+                            onClick={() => markAs(inv, 'sent')}
+                            className="flex items-center gap-1 rounded-lg border border-[var(--theme-border)] px-2 py-1 text-[10px] font-medium text-[var(--theme-muted)] transition-colors hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]"
+                            title="Mark as sent"
+                          >
+                            <HugeiconsIcon icon={Mail02Icon} size={11} />
+                            Send
+                          </button>
+                        )}
+                        {inv.status !== 'paid' && inv.status !== 'void' && (
+                          <button
+                            onClick={() => {
+                              const link = `${location.origin}/pay/${inv.id}`
+                              void navigator.clipboard.writeText(link)
+                              toast('Payment link copied')
+                            }}
+                            className="flex items-center gap-1 rounded-lg border border-[var(--theme-border)] px-2 py-1 text-[10px] font-medium text-[var(--theme-accent)] transition-colors hover:border-[var(--theme-accent)] hover:bg-[var(--theme-accent-soft)]"
+                            title="Copy payment link for client"
+                          >
+                            <HugeiconsIcon icon={LinkSquare02Icon} size={11} />
+                            Pay link
+                          </button>
+                        )}
+                        {inv.status === 'sent' && (
+                          <button
+                            onClick={() => markAs(inv, 'paid')}
+                            className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors"
+                            style={{
+                              color: '#10b981',
+                              borderColor: 'color-mix(in srgb, #10b981 30%, transparent)',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, #10b981 12%, var(--theme-card))' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                            title="Mark as paid"
+                          >
+                            <HugeiconsIcon icon={Tick02Icon} size={11} />
+                            Paid
+                          </button>
+                        )}
+                        <Link
+                          to="/invoices/$id"
+                          params={{ id: inv.id }}
+                          className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+                          title="View / Print"
+                          onClick={e => e.stopPropagation()}
                         >
-                          <HugeiconsIcon icon={Mail02Icon} size={11} />
-                          Send
-                        </button>
-                      )}
-                      {inv.status === 'sent' && (
+                          <HugeiconsIcon icon={Invoice01Icon} size={14} className="text-[var(--theme-muted)]" />
+                        </Link>
                         <button
-                          onClick={() => markAs(inv, 'paid')}
-                          className="flex items-center gap-1 rounded-lg border border-green-500/30 px-2 py-1 text-[10px] font-medium text-green-600 hover:bg-green-500/10"
-                          title="Mark as paid"
+                          onClick={() => setEditing(inv)}
+                          className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
+                          title="Edit"
                         >
-                          <HugeiconsIcon icon={Tick02Icon} size={11} />
-                          Paid
+                          <HugeiconsIcon icon={PencilEdit02Icon} size={14} className="text-[var(--theme-muted)]" />
                         </button>
-                      )}
-                      <Link
-                        to="/invoices/$id"
-                        params={{ id: inv.id }}
-                        className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-                        title="View / Print"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <HugeiconsIcon icon={Invoice01Icon} size={14} className="text-[var(--theme-muted)]" />
-                      </Link>
-                      <button
-                        onClick={() => setEditing(inv)}
-                        className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-                        title="Edit"
-                      >
-                        <HugeiconsIcon icon={PencilEdit02Icon} size={14} className="text-[var(--theme-muted)]" />
-                      </button>
-                      <button
-                        onClick={() => { if (confirm(`Delete invoice ${inv.invoice_number}?`)) deleteMutation.mutate(inv.id) }}
-                        className="rounded-lg p-1.5 transition-colors hover:bg-[var(--theme-hover)]"
-                        title="Delete"
-                      >
-                        <HugeiconsIcon icon={Delete01Icon} size={14} style={{ color: 'var(--theme-danger)' }} />
-                      </button>
+                        <button
+                          onClick={() => { if (confirm(`Delete invoice ${inv.invoice_number}?`)) deleteMutation.mutate(inv.id) }}
+                          className="rounded-lg p-1.5 transition-colors"
+                          onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 12%, var(--theme-card))' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                          title="Delete"
+                        >
+                          <HugeiconsIcon icon={Delete01Icon} size={14} style={{ color: 'var(--theme-danger)' }} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </AnimatePresence>
           )}
         </div>

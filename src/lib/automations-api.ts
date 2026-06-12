@@ -2,7 +2,11 @@
 
 export type TriggerEvent =
   | 'new_contact' | 'contact_stage_changed' | 'new_conversation'
-  | 'new_appointment' | 'campaign_sent'
+  | 'new_appointment' | 'appointment_completed' | 'campaign_sent' | 'form_submitted'
+  | 'deal_created' | 'deal_stage_changed' | 'deal_won' | 'deal_lost'
+  | 'invoice_created' | 'invoice_paid' | 'proposal_signed'
+  | 'sequence_enrolled' | 'sequence_completed' | 'review_request_sent'
+  | 'appointment_cancelled' | 'sms_received'
 
 export type ConditionOperator =
   | 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty'
@@ -51,7 +55,21 @@ export const TRIGGER_LABELS: Record<TriggerEvent, string> = {
   contact_stage_changed: 'Contact stage changed',
   new_conversation: 'New conversation started',
   new_appointment: 'New appointment booked',
+  appointment_completed: 'Appointment completed',
+  appointment_cancelled: 'Appointment cancelled',
   campaign_sent: 'Campaign sent',
+  form_submitted: 'Form submitted',
+  deal_created: 'Deal created',
+  deal_stage_changed: 'Deal stage changed',
+  deal_won: 'Deal won',
+  deal_lost: 'Deal lost',
+  invoice_created: 'Invoice created',
+  invoice_paid: 'Invoice paid',
+  proposal_signed: 'Proposal signed',
+  sequence_enrolled: 'Contact enrolled in sequence',
+  sequence_completed: 'Sequence completed',
+  review_request_sent: 'Review request sent',
+  sms_received: 'SMS received',
 }
 
 export const TRIGGER_EMOJIS: Record<TriggerEvent, string> = {
@@ -59,7 +77,21 @@ export const TRIGGER_EMOJIS: Record<TriggerEvent, string> = {
   contact_stage_changed: '🔄',
   new_conversation: '💬',
   new_appointment: '📅',
+  appointment_completed: '✅',
+  appointment_cancelled: '❌',
   campaign_sent: '📤',
+  form_submitted: '📋',
+  deal_created: '💼',
+  deal_stage_changed: '📊',
+  deal_won: '🏆',
+  deal_lost: '😞',
+  invoice_created: '🧾',
+  invoice_paid: '💰',
+  proposal_signed: '✍️',
+  sequence_enrolled: '📬',
+  sequence_completed: '✅',
+  review_request_sent: '⭐',
+  sms_received: '📱',
 }
 
 export const ACTION_LABELS: Record<ActionType, string> = {
@@ -90,7 +122,14 @@ export const OPERATOR_LABELS: Record<ConditionOperator, string> = {
 }
 
 export const TRIGGER_EVENTS: TriggerEvent[] = [
-  'new_contact', 'contact_stage_changed', 'new_conversation', 'new_appointment', 'campaign_sent',
+  'new_contact', 'contact_stage_changed', 'new_conversation',
+  'new_appointment', 'appointment_completed', 'appointment_cancelled',
+  'campaign_sent', 'form_submitted',
+  'deal_created', 'deal_stage_changed', 'deal_won', 'deal_lost',
+  'invoice_created', 'invoice_paid',
+  'proposal_signed',
+  'sequence_enrolled', 'sequence_completed',
+  'review_request_sent', 'sms_received',
 ]
 export const ACTION_TYPES: ActionType[] = [
   'send_email', 'update_stage', 'add_tag', 'create_task', 'send_notification', 'webhook',
@@ -132,4 +171,23 @@ export async function updateAutomation(id: string, patch: Partial<AutomationInpu
 export async function deleteAutomation(id: string): Promise<void> {
   const res = await fetch(`/api/automations/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Delete failed')
+}
+
+export interface AutomationRun {
+  id: string
+  automation_id: string
+  automation_name: string
+  trigger: TriggerEvent
+  status: 'success' | 'partial' | 'failed'
+  actions_run: number
+  actions_failed: number
+  context_summary: string
+  ran_at: string
+}
+
+export async function fetchRuns(automationId?: string): Promise<AutomationRun[]> {
+  const qs = automationId ? `?id=${automationId}` : ''
+  const res = await fetch(`/api/automations/runs${qs}`)
+  if (!res.ok) throw new Error('Failed to load runs')
+  return (await res.json()).runs
 }

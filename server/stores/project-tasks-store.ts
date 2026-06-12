@@ -61,6 +61,10 @@ export function isTaskStatus(v: unknown): v is TaskStatus {
   return TASK_STATUSES.includes(v as TaskStatus)
 }
 
+export function listAllTasks(): ProjectTask[] {
+  return readAll()
+}
+
 export function listTasksForProject(projectId: string): ProjectTask[] {
   return readAll()
     .filter(t => t.project_id === projectId)

@@ -69,6 +69,33 @@ export async function sendEmail(opts: {
 }
 
 /**
+ * Render a simple transactional email (no unsubscribe footer).
+ * Used for appointment confirmations, invoice notifications, etc.
+ */
+export function renderTransactionalHtml(opts: {
+  brandName: string
+  heading: string
+  lines: string[]   // plain text lines; supports **bold**
+  ctaLabel?: string
+  ctaUrl?: string
+}): string {
+  const { brandName, heading, lines, ctaLabel, ctaUrl } = opts
+  const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const renderLine = (l: string) => escape(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  const body = lines.map(l => `<p style="margin:0 0 12px;line-height:1.6">${renderLine(l)}</p>`).join('')
+  const cta = ctaLabel && ctaUrl
+    ? `<p style="margin:24px 0"><a href="${ctaUrl}" style="background:#4f7ef8;color:#fff;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:600">${ctaLabel}</a></p>`
+    : ''
+  return `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;max-width:580px;margin:0 auto;padding:32px 24px">
+<h2 style="margin:0 0 20px;font-size:20px">${escape(heading)}</h2>
+${body}
+${cta}
+<hr style="border:0;border-top:1px solid #eee;margin:28px 0"/>
+<p style="font-size:11px;color:#999;margin:0">${escape(brandName)}</p>
+</body></html>`
+}
+
+/**
  * Convert simple markdown-ish body to minimal HTML + append an unsubscribe
  * footer (compliance). This is intentionally minimal; a richer renderer can
  * replace it later.
